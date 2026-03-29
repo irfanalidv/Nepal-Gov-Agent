@@ -47,6 +47,7 @@ def ingest_corpus(
 
     all_documents: list[Document] = []
     all_blocks: list[Block] = []
+    failed = 0
 
     for pdf_path in pdf_files:
         if verbose:
@@ -75,11 +76,14 @@ def ingest_corpus(
                 print(f"    → {len(blocks)} blocks extracted")
 
         except Exception as e:
+            failed += 1
             if verbose:
                 print(f"    ✗ Failed: {e}")
             continue
 
     if verbose:
+        if failed:
+            print(f"  Warning: {failed} document(s) failed to ingest")
         print(f"\nCorpus ready: {len(all_documents)} documents, {len(all_blocks)} blocks total")
 
     return all_documents, all_blocks

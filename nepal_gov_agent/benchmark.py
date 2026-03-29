@@ -56,9 +56,11 @@ NEPAL_GOV_QA = [
         "expected_doc": "dnf_jbji8eb.pdf",
         "language": "english",
     },
+    # Nepali query; National AI Policy PDF text is largely English. English keywords
+    # keep keyword-hit metrics meaningful (retrieval), not false zeros from language mismatch.
     {
         "query": "नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?",
-        "expected_keywords": ["नैतिक", "समावेशी", "विकास"],
+        "expected_keywords": ["ethical", "inclusive", "development"],
         "expected_doc": "National AI Policy-Final_uxc94vg.pdf",
         "language": "nepali",
     },

@@ -24,7 +24,8 @@ from ragnav.cache.sqlite_cache import (
 from ragnav.llm.base import LLMClient
 from ragnav.llm.fake import FakeLLMClient
 from ragnav.models import Block, ConfidenceLevel
-from ragnav.retrieval import FallbackConfig, QueryFallback, RAGNavIndex, RAGNavRetriever
+from ragnav.retrieval import RAGNavIndex, RAGNavRetriever
+from ragnav.retrieval.fallback import FallbackConfig, QueryFallback
 
 from .config import DEFAULT_RAG_CONFIG, GovRAGConfig
 from .ingest import ingest_corpus

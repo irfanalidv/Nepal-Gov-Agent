@@ -20,6 +20,14 @@ def test_search_returns_blocks(rag: GovRAG):
     assert "content" in blocks[0]
 
 
+def test_search_key_structure(rag: GovRAG):
+    blocks = rag.search("AI policy", k=3)
+    if blocks:
+        assert "content" in blocks[0]
+        assert "doc_id" in blocks[0]
+        assert "block_id" in blocks[0]
+
+
 def test_stats(rag: GovRAG):
     stats = rag.stats
     assert stats["documents"] >= 1
