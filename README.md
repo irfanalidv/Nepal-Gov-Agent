@@ -3,8 +3,10 @@
 > Open-source agentic AI framework for Nepal's government service layer — RAG, multi-step task automation, and MLOps infra designed for offline deployment and Nepali language workflows.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Status](https://img.shields.io/badge/status-active%20development-orange.svg)]()
+[![PyPI version](https://img.shields.io/pypi/v/nepal-gov-agent.svg)](https://pypi.org/project/nepal-gov-agent/)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/nepal-gov-agent?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/nepal-gov-agent)
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
+[![Status](https://img.shields.io/badge/status-active%20development-orange.svg)]()
 
 ---
 
@@ -16,10 +18,9 @@ Nepal has a digital government layer. The [Nagarik App](https://nagarikapp.gov.n
 
 Today, Nepal's government AI systems can answer questions. They cannot:
 
-- Complete multi-step tasks on behalf of a citizen ("apply for this permit end-to-end")
 - Retrieve and cite specific clauses from Nepal's legal and policy corpus with source tracing
 - Run reliably without internet connectivity in areas with poor network coverage
-- Plug into existing systems without cloud API dependency (no data leaving Nepal)
+- Handle Nepali and English queries against the same document corpus
 - Monitor and audit themselves at production scale
 
 Nepal's [National AI Policy 2082](https://aiassociationnepal.org/national-artificial-intelligence-ai-policy-2082/) explicitly identifies **infrastructure, data, and sovereignty** as its foundational pillars. The [AI Association of Nepal (AIAN)](https://aiassociationnepal.org) has framed national AI readiness around four pillars: Data, Infrastructure, Policy, Resources.
@@ -28,144 +29,16 @@ This project is the infrastructure answer.
 
 ---
 
-## What Nepal GovAgent does
-
-Nepal GovAgent assembles three battle-tested open-source libraries into a unified framework configured specifically for Nepal's government context.
-
-### Under the hood — the stack
-
-```
-Nepal GovAgent
-│
-├── RAG Layer          →  RAGNav        (retrieval, citations, legal doc parsing)
-├── Reliability Layer  →  ragfallback   (confidence scoring, adaptive fallback, diagnostics)
-└── Agent Layer        →  AgentEnsemble (multi-step orchestration, memory, task planning)
-```
-
-Each library is independently published on PyPI and production-tested. Nepal GovAgent is the Nepal-specific assembly: pre-configured pipelines, Nepali language handling, offline-first defaults, and a growing corpus of Nepal government documents.
-
-### Core capabilities
-
-**1. Legal document RAG with inline citations**
-
-Every answer is traceable to a specific block in a specific government document. Powered by RAGNav's `answer_with_inline_citations` — every sentence must include a `[[block_id]]` reference or the answer is rejected.
-
-```python
-from nepal_gov_agent import GovRAG, GovRAGConfig
-
-rag = GovRAG(corpus_dir="Data/", config=GovRAGConfig(language="auto"))
-result = rag.ask("नागरिकता नवीकरण गर्न के चाहिन्छ?")
-
-print(result.answer)   # Answer with inline citations
-print(result.sources)  # Exact document + page references
-```
-
-**2. Legal document structure parsing**
-
-Nepal's government circulars and laws use numbered section structures (`12. Termination`, `Section 4.2`, lettered subsections). RAGNav's `ingest_legal` parser handles this natively — preserving hierarchy, parent-child relationships, and section paths so retrieval respects document structure.
-
-**3. Adaptive retrieval with fallback**
-
-When the first retrieval attempt is low-confidence (common with Nepali/English mixed queries), ragfallback automatically generates rephrased query variants and retries. No silent failures.
-
-**4. Agentic task execution**
-
-Multi-step government service workflows via AgentEnsemble. Supervisor, pipeline, and swarm coordination modes. SQLite-backed session memory — no cloud dependency.
-
-**5. Offline-first architecture**
-
-BM25 retrieval works with zero internet. Sentence-transformer embeddings run locally. SQLite caching means repeated queries are free. Designed for Nepal's geography — remote municipalities, areas with unreliable connectivity.
-
----
-
-## The gap this fills
-
-| Layer                           | Who's doing it               | What's missing     |
-| ------------------------------- | ---------------------------- | ------------------ |
-| Nepali NLP / NLU                | Paaila Technology, Diyo AI   | —                  |
-| Government chatbots             | Diyo AI (Muna), Fusemachines | —                  |
-| AI training / fellowships       | Fusemachines                 | —                  |
-| **Legal RAG with citation**     | **Nobody**                   | **← This project** |
-| **Adaptive retrieval fallback** | **Nobody**                   | **← This project** |
-| **Agentic task orchestration**  | **Nobody**                   | **← This project** |
-| **Offline-capable full stack**  | **Nobody**                   | **← This project** |
-
----
-
-## Nepal context: why now
-
-- **August 2025** — Nepal Cabinet approved [National AI Policy 2082](https://aiassociationnepal.org/national-artificial-intelligence-ai-policy-2082/) — first dedicated national AI policy
-- **November 2025** — AIAN + Embassy of India co-hosted "AI for Inclusive Growth: Building Nepal's AI Ready Future" (400+ participants, official pre-summit event for India AI Impact Summit 2026)
-- **February 2026** — [World Bank approved $50M](https://coingeek.com/nepal-secures-50m-for-digitalization-approved-by-world-bank/) Nepal Digital Transformation Project
-- **March 2026** — [Nagarik App at 1.5M+ users](https://en.wikipedia.org/wiki/Nagarik_App) but backend intelligence layer is missing
-- **2026** — National AI Centre operational under MOCIT; 7 provincial AI Excellence Centres being established
-
-The infrastructure window is open.
-
----
-
-## Seed corpus (in this repo)
-
-The `Data/` folder contains verified, publicly available Nepal government documents:
-
-| Document                                       | Language |
-| ---------------------------------------------- | -------- |
-| National AI Policy 2082                        | English  |
-| Constitution of Nepal (2nd amendment)          | English  |
-| Digital Nepal Framework 2.0                    | English  |
-| प्रतिनिधि सभा सदस्य निर्वाचन अध्यादेश २०८२     | Nepali   |
-| मानव अधिकार पुरस्कार कोष सञ्चालन नियमावली २०७५ | Nepali   |
-
-Community contributions of ministry circulars, SOPs, and municipality guidelines are the highest priority — see [CONTRIBUTING.md](CONTRIBUTING.md).
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Nepal GovAgent                           │
-├─────────────────┬─────────────────────┬─────────────────────┤
-│   Agent Layer   │     RAG Layer       │  Reliability Layer   │
-│  (AgentEnsemble)│    (RAGNav)         │  (ragfallback)       │
-│                 │                     │                      │
-│  Supervisor     │  PDF ingestion      │  Confidence scoring  │
-│  Pipeline       │  Legal doc parser   │  Adaptive fallback   │
-│  Swarm          │  BM25 + vectors     │  Cost tracking       │
-│  SQLite memory  │  Inline citations   │  Retrieval health    │
-│  Task planner   │  Graph expansion    │  Diagnostics         │
-└────────┬────────┴──────────┬──────────┴──────────┬──────────┘
-         │                   │                      │
-         ▼                   ▼                      ▼
-┌──────────────┐   ┌──────────────────┐   ┌──────────────────┐
-│ Nepali NLP   │   │ Nepal Gov Corpus  │   │ Existing Nepal   │
-│ (Paaila /    │   │ Data/ folder      │   │ Gov Systems      │
-│  Bhashini)   │   │ + community docs  │   │ (Nagarik App,    │
-└──────────────┘   └──────────────────┘   │  municipalities) │
-                                           └──────────────────┘
-```
-
----
-
-## Installation
+## Install
 
 ```bash
 pip install nepal-gov-agent
 ```
 
-Or from source:
-
+For answer generation with citations (optional):
 ```bash
-git clone https://github.com/irfanalidv/Nepal-Gov-Agent
-cd Nepal-Gov-Agent
-pip install -e .
-```
-
-### Core dependencies
-
-```bash
-pip install ragnav ragfallback agentensemble
-pip install pymupdf sentence-transformers
+pip install nepal-gov-agent[mistral]   # Mistral API
+pip install nepal-gov-agent[ollama]    # Local Ollama
 ```
 
 ---
@@ -173,48 +46,399 @@ pip install pymupdf sentence-transformers
 ## Quick start
 
 ```python
-from nepal_gov_agent import GovRAG, GovRAGConfig
+from nepal_gov_agent import GovRAG
 
-# Works fully offline by default (local embeddings, no API keys)
-rag = GovRAG(corpus_dir="Data/", config=GovRAGConfig(language="auto"))
+rag = GovRAG(corpus_dir="Data/")
+result = rag.ask("What is the vision of Nepal's National AI Policy?")
 
-# Ask in Nepali
-result = rag.ask("नागरिकता नवीकरण गर्न के चाहिन्छ?")
 print(result.answer)
-print(result.sources)
-
-# Ask in English
-result = rag.ask("What are the key provisions of Nepal's National AI Policy?")
-print(result.answer)
-print(result.sources)
+print(result.confidence)   # "high" | "medium" | "low"
+for src in result.sources:
+    print(src["doc"], "page", src["page"])
 ```
 
-### Benchmark: retrieval, not answer quality
+**Real output:**
 
-`run_benchmark` / `nepal-gov-agent benchmark` score **whether the right material was retrieved** (e.g. expected keywords or document in the top‑k blocks). They do **not** measure generated answer correctness, BLEU/ROUGE, or LLM-as-judge quality. When reporting to stakeholders, phrase it as: “Recall@3 = 0.86 means the relevant document content appeared in the top 3 retrieved blocks 86% of the time,” not “answers are 86% accurate.”
+```
+[National AI Policy-Final_uxc94vg.pdf, p.1] Introduction
+The vision of Nepal's National AI Policy is to build an ethical, safe, and
+human-centric AI ecosystem that promotes inclusive and sustainable socio-economic
+growth through responsible use of artificial intelligence...
+
+---
+
+[National AI Policy-Final_uxc94vg.pdf, p.2] Objectives
+The mission focuses on maximising AI use for Nepal's socio-economic development...
+
+high
+National AI Policy-Final_uxc94vg.pdf page 1
+National AI Policy-Final_uxc94vg.pdf page 2
+dnf_jbji8eb.pdf page 4
+```
+
+---
+
+## Use cases
+
+### 1. Query the Nepal AI Policy (English)
+
+```python
+from nepal_gov_agent import GovRAG
+
+rag = GovRAG(corpus_dir="Data/")
+
+result = rag.ask("What is the role of the National AI Centre?")
+print(result.answer)
+print("Confidence:", result.confidence)
+```
+
+**Real output:**
+```
+[National AI Policy-Final_uxc94vg.pdf, p.18] National AI Centre
+The National AI Centre shall serve as the Secretariat of the AI Regulation
+Council. It will promote, encourage, and regulate AI study, research,
+development, and application. The Centre is tasked with conducting research
+and development in the AI technology sector and supporting the capacity
+development of local researchers and institutions...
+
+Confidence: high
+```
+
+---
+
+### 2. Nepali language query
+
+```python
+result = rag.ask("नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?")
+
+print(result.answer)
+print("Confidence:", result.confidence)
+print("Fallback triggered:", result.fallback_triggered)
+```
+
+**Real output:**
+```
+[National AI Policy-Final_uxc94vg.pdf, p.1] Introduction
+Nepal's AI Policy aims to build a reliable AI ecosystem, boost economic
+productivity, improve public services, and strengthen governance. The
+objectives include building infrastructure, promoting research, and
+ensuring ethical and secure AI deployment...
+
+Confidence: medium
+Fallback triggered: False
+```
+
+---
+
+### 3. Constitution query
+
+```python
+result = rag.ask("What does the Constitution say about fundamental rights?")
+
+print(result.answer[:600])
+print("\nSources:")
+for src in result.sources[:3]:
+    print(f"  {src['doc']} — page {src['page']}")
+    if src["heading"]:
+        print(f"  Section: {src['heading']}")
+```
+
+**Real output:**
+```
+[Constitution of Nepal (2nd amd. English)_xf33zb3.pdf, p.12] Part 3 — Fundamental Rights
+Every citizen shall have the following rights: Right to equality before
+law. No discrimination shall be made against any citizen in the application
+of general laws on grounds of origin, religion, race, caste, tribe, sex,
+economic condition, language, region, ideology or on similar other grounds...
+
+Sources:
+  Constitution of Nepal (2nd amd. English)_xf33zb3.pdf — page 12
+  Section: Part 3 — Fundamental Rights
+  Constitution of Nepal (2nd amd. English)_xf33zb3.pdf — page 13
+  Constitution of Nepal (2nd amd. English)_xf33zb3.pdf — page 14
+```
+
+---
+
+### 4. Raw search (no answer generation)
+
+```python
+blocks = rag.search("National AI Centre secretariat", k=5)
+
+for b in blocks:
+    print(b["doc_id"])
+    print(b["title"])
+    print(b["content"][:200])
+    print("---")
+```
+
+**Real output:**
+```
+pdf:National AI Policy-Final_uxc94vg.pdf
+None
+10.2 National AI Centre
+The National AI Centre shall serve as the Secretariat of the AI Regulation
+Council. It will promote, encourage, and regulate AI study, research,
+development and application...
+---
+pdf:National AI Policy-Final_uxc94vg.pdf
+None
+10.1 AI Regulation Council
+The AI Regulation Council shall meet at least twice a year. The National
+AI Centre shall serve as its Secretariat...
+---
+```
+
+---
+
+### 5. With LLM for cited answers (Mistral)
+
+```python
+import os
+from ragnav.llm.mistral import MistralClient
+from nepal_gov_agent import GovRAG
+
+os.environ["MISTRAL_API_KEY"] = "your_key_here"  # or load from .env
+
+rag = GovRAG(corpus_dir="Data/")
+llm = MistralClient()
+
+result = rag.ask(
+    "How many AI professionals does Nepal aim to train?",
+    llm=llm,
+    with_citations=True,
+)
+print(result.answer)
+```
+
+**Real output (with citations):**
+```
+Nepal aims to train at least 5,000 skilled AI professionals within five
+years [[pdf:National AI Policy-Final_uxc94vg.pdf#p3]]. This target is
+part of a broader capacity-building initiative that includes integrating
+AI curricula from school to university level [[pdf:National AI Policy-Final_uxc94vg.pdf#p4]].
+```
+
+---
+
+### 6. Run the benchmark
+
+```python
+from nepal_gov_agent import GovRAG, run_benchmark
+
+rag = GovRAG(corpus_dir="Data/")
+results = run_benchmark(rag, verbose=True)
+print(results.report())
+```
+
+**Real output:**
+```
+  ✓ [english] What is the vision of Nepal's National AI Policy?...
+  ✓ [english] What are the four pillars of Nepal's AI readiness?...
+  ✓ [english] What is the role of the National AI Centre?...
+  ✓ [english] How many AI professionals does Nepal aim to train?...
+  ✓ [english] What does the Constitution say about fundamental rights...
+  ✓ [english] What is Digital Nepal Framework 2.0?...
+  ✓ [nepali] नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?...
+
+============================================================
+Nepal GovAgent Benchmark Results
+============================================================
+Total queries:      7
+Recall@1:           0.571
+Recall@3:           0.857
+Recall@5:           1.000
+Keyword hit rate:   1.000
+Doc hit rate:       1.000
+Nepali recall@3:    1.000
+English recall@3:   0.833
+============================================================
+```
+
+> **Note:** These numbers measure **retrieval**, not generated answer quality. Recall@3 = 0.857 means the expected keywords showed up in the top 3 retrieved blocks for 6 of 7 queries. Doc hit rate = 1.000 means the expected source PDF (filename) appeared in the top‑5 hits for every query. See [Benchmark: retrieval not answer quality](#benchmark-retrieval-not-answer-quality) below.
+
+---
+
+### 7. CLI
+
+```bash
+# Ask in English
+nepal-gov-agent ask "What is Nepal's National AI Policy?"
+
+# Ask in Nepali
+nepal-gov-agent ask "नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?"
+
+# Custom corpus folder
+nepal-gov-agent ask "What are fundamental rights?" --corpus /path/to/docs/
+
+# Retrieve more blocks
+nepal-gov-agent ask "AI infrastructure" --k 10
+
+# Run benchmark
+nepal-gov-agent benchmark --corpus Data/
+
+# Show corpus stats
+nepal-gov-agent stats
+```
+
+**Real CLI output (`ask`):**
+```
+============================================================
+ANSWER
+============================================================
+[National AI Policy-Final_uxc94vg.pdf, p.1] Introduction
+The vision of Nepal's National AI Policy is to build an ethical, safe,
+and human-centric AI ecosystem...
+
+============================================================
+SOURCES
+============================================================
+1. National AI Policy-Final_uxc94vg.pdf (page 1)
+   Excerpt: The vision of Nepal's National AI Policy is to build an ethical...
+2. National AI Policy-Final_uxc94vg.pdf (page 2)
+   Excerpt: The mission focuses on maximising AI use for Nepal's socio-econ...
+3. dnf_jbji8eb.pdf (page 4)
+   Excerpt: Digital Nepal Framework 2.0 builds upon the comprehensive vision...
+
+Confidence: high
+```
+
+---
+
+### 8. Corpus statistics
+
+```python
+rag = GovRAG(corpus_dir="Data/", verbose=False)
+print(rag.stats)
+```
+
+**Real output:**
+```python
+{
+    "documents": 6,
+    "blocks": 312,
+    "corpus_dir": "Data/",
+    "offline": True
+}
+```
+
+---
+
+### 9. Custom config
+
+```python
+from nepal_gov_agent import GovRAG, GovRAGConfig
+
+config = GovRAGConfig(
+    w_bm25=0.7,              # More weight on keyword search
+    w_vec=0.3,               # Less weight on semantic search
+    k_final=12,              # Retrieve more blocks
+    max_fallback_attempts=5, # More retries on low confidence
+    cache_dir=".my_cache",
+    embedding_model="all-MiniLM-L6-v2",
+)
+
+rag = GovRAG(corpus_dir="Data/", config=config)
+result = rag.ask("What is the Digital Nepal Framework?")
+```
+
+---
+
+## What's in the corpus (seed)
+
+| Document | Language |
+|---|---|
+| National AI Policy 2082 | English |
+| Constitution of Nepal (2nd amendment) | English |
+| Digital Nepal Framework 2.0 | English |
+| प्रतिनिधि सभा सदस्य निर्वाचन अध्यादेश २०८२ | Nepali |
+| मानव अधिकार पुरस्कार कोष सञ्चालन नियमावली २०७५ | Nepali |
+
+Add your own PDFs to `Data/` — they are automatically ingested on next run. Only PDFs in the root of `Data/` are picked up (not subdirectories).
+
+---
+
+## Under the hood
+
+```
+Nepal GovAgent
+│
+├── RAG Layer          →  ragnav==0.3.0
+│   ├── PDF ingestion (PyMuPDF, page-level blocks)
+│   ├── BM25 index (rank-bm25)
+│   ├── Vector index (sentence-transformers, all-MiniLM-L6-v2)
+│   ├── Hybrid retrieval (BM25 0.6 + vector 0.4, RRF fusion)
+│   ├── Structure expansion (parent/child block hierarchy)
+│   ├── Inline citation enforcement
+│   └── SQLite embedding + retrieval cache (offline)
+│
+├── Reliability Layer  →  ragfallback==2.0.2
+│   └── QueryFallback: retries with rephrased query on low confidence
+│
+└── Agent Layer        →  agentensemble==0.3.0 (Phase 2)
+    └── Multi-step workflows, SQLite session memory (planned)
+```
+
+**Key design decisions:**
+- BM25 weight 0.6 > vector 0.4: Nepal gov docs use specific legal terminology that keyword search handles better than embeddings
+- Offline by default: `all-MiniLM-L6-v2` runs on CPU with no API key needed
+- SQLite cache: embeddings cached locally — second run is instant
+- Fallback only on `ConfidenceLevel.LOW`: avoids unnecessary LLM calls on already-confident retrievals
+
+---
+
+## Benchmark: retrieval, not answer quality
+
+The built-in benchmark measures **retrieval quality** — whether the right content appears in the top-k retrieved blocks. It does not evaluate answer accuracy, fluency, or factual correctness.
+
+When presenting results to stakeholders:
+
+> "Recall@3 = 0.857 means that for 6 out of 7 test queries, the relevant section of the government document appeared in the top 3 retrieved chunks."
+
+This is a meaningful signal for infrastructure quality. Answer quality evaluation (LLM-as-judge, BLEU/ROUGE) is planned for Phase 2.
+
+---
+
+## The gap this fills
+
+| Layer | Who's doing it | What's missing |
+|---|---|---|
+| Nepali NLP / NLU | Paaila Technology, Diyo AI | — |
+| Government chatbots | Diyo AI (Muna), Fusemachines | — |
+| AI training / fellowships | Fusemachines | — |
+| **Legal RAG with citation** | **Nobody** | **← This project** |
+| **Adaptive retrieval fallback** | **Nobody** | **← This project** |
+| **Offline-capable full stack** | **Nobody** | **← This project** |
+
+---
+
+## Nepal context
+
+- **August 2025** — Nepal Cabinet approved [National AI Policy 2082](https://aiassociationnepal.org/national-artificial-intelligence-ai-policy-2082/)
+- **November 2025** — AIAN + Embassy of India hosted "AI for Inclusive Growth: Building Nepal's AI Ready Future" (400+ participants)
+- **February 2026** — [World Bank approved $50M](https://coingeek.com/nepal-secures-50m-for-digitalization-approved-by-world-bank/) Nepal Digital Transformation Project
+- **March 2026** — [Nagarik App at 1.5M+ users](https://en.wikipedia.org/wiki/Nagarik_App); backend intelligence layer remains an open gap
 
 ---
 
 ## Roadmap
 
-### Phase 1 — RAG core (current focus)
-
-- [x] Seed corpus: Nepal government documents in `Data/`
-- [x] `GovRAG` class: unified API over RAGNav + ragfallback
-- [ ] Nepali + English hybrid chunking strategy
-- [x] Offline embedding with sentence-transformers
-- [ ] Citation validation for every answer (requires a real LLM client in `ask()`)
-- [x] CLI: `nepal-gov-agent ask|benchmark|stats`
+### Phase 1 — RAG core ✅
+- [x] `GovRAG` class: hybrid BM25 + vector retrieval over Nepal gov corpus
+- [x] Offline embedding with `sentence-transformers`
+- [x] Adaptive retrieval fallback on low confidence
+- [x] Inline citation support (with external LLM)
+- [x] `nepal-gov-agent ask / benchmark / stats` CLI
+- [x] Nepal-specific benchmark harness (Recall@k, keyword hit rate)
+- [x] 9 tests passing
 
 ### Phase 2 — Agent capabilities
-
 - [ ] `GovAgent` class: multi-step task execution via AgentEnsemble
 - [ ] Common government workflow templates (citizenship, permits, licenses)
 - [ ] Nagarik App integration layer
 - [ ] Corpus expansion: ministry circulars 2080–2082
 
 ### Phase 3 — Production infra
-
 - [ ] MLOps monitoring dashboard
 - [ ] Audit trail: every agent action logged and explainable
 - [ ] Deployment guide for municipal servers (low-spec hardware)
@@ -222,23 +446,23 @@ print(result.sources)
 
 ---
 
-## Built on
-
-| Library                                                      | Role                                | PyPI                        |
-| ------------------------------------------------------------ | ----------------------------------- | --------------------------- |
-| [RAGNav](https://github.com/irfanalidv/RAGNav)               | Retrieval, citations, legal parsing | `pip install ragnav`        |
-| [ragfallback](https://github.com/irfanalidv/ragfallback)     | Reliability, fallback, diagnostics  | `pip install ragfallback`   |
-| [AgentEnsemble](https://github.com/irfanalidv/AgentEnsemble) | Orchestration, memory, planning     | `pip install agentensemble` |
-
-All three are open-source, MIT licensed, and independently usable.
-
----
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-Highest priority: **Nepal government document corpus**. If you have publicly available PDFs — ministry circulars, SOPs, municipality guidelines — open an issue or PR.
+**Highest priority:** Nepal government document corpus. If you have publicly available PDFs — ministry circulars, SOPs, municipality guidelines — open an issue or PR adding them to `Data/`.
+
+---
+
+## Built on
+
+| Library | Role | Version |
+|---|---|---|
+| [RAGNav](https://github.com/irfanalidv/RAGNav) | Retrieval, citations, PDF ingestion | `>=0.3.0` |
+| [ragfallback](https://github.com/irfanalidv/ragfallback) | Reliability, fallback, diagnostics | `>=2.0.2` |
+| [AgentEnsemble](https://github.com/irfanalidv/AgentEnsemble) | Orchestration, memory, planning | `>=0.3.0` |
+
+All three are open-source, MIT licensed, and independently usable on PyPI.
 
 ---
 
@@ -256,4 +480,4 @@ MIT — free for government, private sector, and academic use. No strings.
 
 ---
 
-_If you're working on Nepal's AI infrastructure layer — government, private sector, or development partner — open an issue or reach out directly._
+*Working on Nepal's AI infrastructure layer? Open an issue or reach out directly.*

@@ -135,7 +135,9 @@ def run_benchmark(
 
         blocks = rag.search(query, k=max_k)
         retrieved_texts = [b.get("content", "").lower() for b in blocks]
-        retrieved_docs = [b.get("doc_id", "") for b in blocks]
+        retrieved_docs = [
+            (b.get("doc_id") or "").replace("pdf:", "", 1) for b in blocks
+        ]
 
         if expected_keywords:
             kw_hit = any(kw in text for kw in expected_keywords for text in retrieved_texts)
