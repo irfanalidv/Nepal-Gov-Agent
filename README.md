@@ -3,7 +3,8 @@
 > Open-source agentic AI framework for Nepal's government service layer — RAG, multi-step task automation, and MLOps infra designed for offline deployment and Nepali language workflows.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PyPI version](https://img.shields.io/pypi/v/nepal-gov-agent.svg)](https://pypi.org/project/nepal-gov-agent/)
+#[![PyPI version](https://img.shields.io/pypi/v/nepal-gov-agent.svg)](https://pypi.org/project/nepal-gov-agent/)
+[![Status](https://img.shields.io/badge/status-active%20development-orange.svg)]()
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![Status](https://img.shields.io/badge/status-active%20development-orange.svg)]()
 
