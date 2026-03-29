@@ -182,7 +182,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## About
 
-Built by [Irfan Ali](https://github.com/irfanalidv) — Founder, [DataCortex IQ](https://www.datacortex.in/) | 7+ years in LLM engineering, RAG pipelines, and agentic AI | 11 open-source Python libraries on PyPI | M.Sc. Data Science & AI, IISER Tirupati.
+Built by [Irfan Ali](https://www.linkedin.com/in/irfanalidv/) — [GitHub](https://github.com/irfanalidv) — Founder, [DataCortex IQ](https://www.datacortex.in/) | 7+ years in LLM engineering, RAG pipelines, and agentic AI | 11 open-source Python libraries on PyPI | M.Sc. Data Science & AI, IISER Tirupati.
 
 Built in the spirit of AIAN's four pillars: **Data. Infrastructure. Policy. Resources.**
 
