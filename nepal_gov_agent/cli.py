@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 
 
@@ -35,6 +36,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "ask":
+        logging.basicConfig(level=logging.INFO)
         from .rag import GovRAG
 
         rag = GovRAG(corpus_dir=args.corpus)
@@ -60,6 +62,7 @@ def main() -> None:
             print(f"Note: fallback triggered — used query: '{result.query_used}'")
 
     elif args.command == "benchmark":
+        logging.basicConfig(level=logging.INFO)
         from .benchmark import run_benchmark
         from .rag import GovRAG
 
@@ -69,9 +72,10 @@ def main() -> None:
         run_benchmark(rag, verbose=True)
 
     elif args.command == "stats":
+        logging.basicConfig(level=logging.WARNING)
         from .rag import GovRAG
 
-        rag = GovRAG(corpus_dir=args.corpus, verbose=False)
+        rag = GovRAG(corpus_dir=args.corpus)
         stats = rag.stats
         print(f"Documents: {stats['documents']}")
         print(f"Blocks:    {stats['blocks']}")

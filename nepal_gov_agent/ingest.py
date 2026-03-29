@@ -10,53 +10,50 @@ Handles:
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Optional
 
 from ragnav.ingest.pdf import PdfIngestOptions, ingest_pdf_file
 from ragnav.models import Block, Document
 
+logger = logging.getLogger(__name__)
+
 
 def ingest_corpus(
     corpus_dir: str,
     *,
     max_pages_per_doc: Optional[int] = None,
-    verbose: bool = True,
 ) -> tuple[list[Document], list[Block]]:
     """
-    Ingest all PDFs from a directory into RAGNav documents and blocks.
+    Page-level PDF ingestion via PyMuPDF; legal/graph paths live in RAGNav separately.
 
-    Uses page-level PDF ingestion (PyMuPDF). For paper-style structure and
-    cross-references, use RAGNav's paper/graph ingest paths separately.
-
-    Args:
-        corpus_dir: Path to folder containing PDF files (e.g. "Data/")
-        max_pages_per_doc: Limit pages per document (None = all pages)
-        verbose: Print ingestion progress
-
-    Returns:
-        Tuple of (documents, blocks) ready for RAGNavIndex.build()
+    Scans only ``corpus_dir`` itself (no subdirectories); use a flat folder e.g. ``Data/*.pdf``.
     """
     corpus_path = Path(corpus_dir)
     if not corpus_path.exists():
-        raise FileNotFoundError(f"Corpus directory not found: {corpus_dir}")
+        raise FileNotFoundError(
+            f"Corpus directory not found: {corpus_dir}\n"
+            "Create the directory, add PDF files, and pass the correct path."
+        )
 
-    # Only the corpus root is scanned (not subdirectories); keep PDFs flat e.g. Data/*.pdf.
     pdf_files = list(corpus_path.glob("*.pdf"))
     if not pdf_files:
-        raise ValueError(f"No PDF files found in {corpus_dir}")
+        raise ValueError(
+            f"No PDF files found in {corpus_dir}\n"
+            "Add .pdf files to that folder (not subfolders) and retry."
+        )
 
     all_documents: list[Document] = []
     all_blocks: list[Block] = []
     failed = 0
 
     for pdf_path in pdf_files:
-        if verbose:
-            print(f"  Ingesting: {pdf_path.name}")
+        logger.info("Ingesting: %s", pdf_path.name)
 
         opts = PdfIngestOptions(
             max_pages=max_pages_per_doc,
-            paper_mode=False,  # gov docs are not papers
+            paper_mode=False,
         )
 
         try:
@@ -73,18 +70,19 @@ def ingest_corpus(
             all_documents.append(doc)
             all_blocks.extend(blocks)
 
-            if verbose:
-                print(f"    → {len(blocks)} blocks extracted")
+            logger.info("Extracted %d blocks from %s", len(blocks), pdf_path.name)
 
         except Exception as e:
             failed += 1
-            if verbose:
-                print(f"    ✗ Failed: {e}")
+            logger.warning("Failed to ingest %s: %s", pdf_path.name, e)
             continue
 
-    if verbose:
-        if failed:
-            print(f"  Warning: {failed} document(s) failed to ingest")
-        print(f"\nCorpus ready: {len(all_documents)} documents, {len(all_blocks)} blocks total")
+    if failed:
+        logger.warning("%d document(s) failed to ingest", failed)
+    logger.info(
+        "Corpus ready: %d documents, %d blocks total",
+        len(all_documents),
+        len(all_blocks),
+    )
 
     return all_documents, all_blocks

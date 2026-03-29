@@ -10,6 +10,10 @@ Run:
     python examples/benchmark_corpus.py
 """
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 from nepal_gov_agent import GovRAG, run_benchmark
 
 rag = GovRAG(corpus_dir="Data/")

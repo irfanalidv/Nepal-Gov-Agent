@@ -5,7 +5,7 @@ from nepal_gov_agent import GovRAG
 
 def test_bad_corpus_path_raises():
     with pytest.raises(FileNotFoundError):
-        GovRAG(corpus_dir="nonexistent_dir_xyz/", verbose=False)
+        GovRAG(corpus_dir="nonexistent_dir_xyz/")
 
 
 def test_ask_returns_result(rag: GovRAG):

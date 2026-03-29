@@ -10,6 +10,7 @@ Designed for offline use. No API keys required by default.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -24,47 +25,33 @@ from ragnav.cache.sqlite_cache import (
 from ragnav.llm.base import LLMClient
 from ragnav.llm.fake import FakeLLMClient
 from ragnav.models import Block, ConfidenceLevel
-from ragnav.retrieval import RAGNavIndex, RAGNavRetriever
 from ragnav.retrieval.fallback import FallbackConfig, QueryFallback
+from ragnav.retrieval import RAGNavIndex, RAGNavRetriever
 
 from .config import DEFAULT_RAG_CONFIG, GovRAGConfig
 from .ingest import ingest_corpus
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class GovRAGResult:
-    """Result from GovRAG.ask()"""
-
     answer: str
-    sources: list[dict]  # doc, page, block_id, heading, excerpt
+    sources: list[dict]
     cited_block_ids: tuple[str, ...]
-    confidence: str  # "high" | "medium" | "low"
-    query_used: str  # may differ from original if fallback triggered
+    confidence: str
+    query_used: str
     fallback_triggered: bool
 
 
 class GovRAG:
-    """
-    Nepal government document RAG system.
-
-    Usage:
-        rag = GovRAG(corpus_dir="Data/")
-        result = rag.ask("नागरिकता नवीकरण गर्न के चाहिन्छ?")
-        print(result.answer)
-        print(result.sources)
-
-    Fully offline by default. No API keys needed.
-    """
-
     def __init__(
         self,
         corpus_dir: str = "Data/",
         config: GovRAGConfig = DEFAULT_RAG_CONFIG,
-        verbose: bool = True,
     ):
         self.config = config
         self.corpus_dir = corpus_dir
-        self._verbose = verbose
 
         cache_dir = Path(config.cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
@@ -73,12 +60,10 @@ class GovRAG:
         self._emb_cache = EmbeddingCache(emb_kv)
         self._ret_cache = RetrievalCache(ret_kv)
 
-        if verbose:
-            print(f"Loading Nepal GovAgent corpus from: {corpus_dir}")
-        self._documents, self._blocks = ingest_corpus(corpus_dir, verbose=verbose)
+        logger.info("Loading corpus from: %s", corpus_dir)
+        self._documents, self._blocks = ingest_corpus(corpus_dir)
 
-        if verbose:
-            print("Building retrieval index...")
+        logger.info("Building retrieval index...")
 
         self._llm: LLMClient = FakeLLMClient()
 
@@ -98,8 +83,11 @@ class GovRAG:
             llm=self._llm,
         )
 
-        if verbose:
-            print(f"Ready. {len(self._blocks)} blocks indexed across {len(self._documents)} documents.\n")
+        logger.info(
+            "Ready: %d blocks indexed across %d documents",
+            len(self._blocks),
+            len(self._documents),
+        )
 
     def ask(
         self,
@@ -109,18 +97,6 @@ class GovRAG:
         k_final: Optional[int] = None,
         with_citations: bool = True,
     ) -> GovRAGResult:
-        """
-        Ask a question against the Nepal government corpus.
-
-        Args:
-            query: Question in Nepali or English
-            llm: LLM client for answer generation (required for strict inline citations)
-            k_final: Override number of blocks to retrieve (before structure expansion)
-            with_citations: Whether to enforce inline citations when ``llm`` is set
-
-        Returns:
-            GovRAGResult with answer, sources, confidence
-        """
         cfg = self.config
         k = k_final or cfg.k_final
 
@@ -205,10 +181,6 @@ class GovRAG:
         )
 
     def _simple_answer(self, query: str, blocks: list[Block]) -> str:
-        """
-        Simple context concatenation when no LLM is available.
-        Returns the top retrieved blocks as the 'answer' for inspection.
-        """
         if not blocks:
             return "No relevant content found in the Nepal government corpus."
         parts = []
@@ -221,10 +193,6 @@ class GovRAG:
         return "\n\n---\n\n".join(parts)
 
     def search(self, query: str, k: int = 5) -> list[dict[str, Any]]:
-        """
-        Raw search — returns blocks without answer generation.
-        Useful for inspection and debugging.
-        """
         return self._retriever.retrieve_raw(
             query,
             max_blocks=k,
@@ -239,7 +207,6 @@ class GovRAG:
 
     @property
     def stats(self) -> dict[str, Any]:
-        """Corpus statistics."""
         return {
             "documents": len(self._documents),
             "blocks": len(self._blocks),

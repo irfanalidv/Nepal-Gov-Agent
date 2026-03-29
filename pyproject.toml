@@ -15,7 +15,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Government",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -53,3 +52,6 @@ Repository = "https://github.com/irfanalidv/Nepal-Gov-Agent"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["nepal_gov_agent*"]
+
+[tool.setuptools.package-data]
+nepal_gov_agent = ["py.typed"]

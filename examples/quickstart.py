@@ -6,6 +6,10 @@ Run:
     python examples/quickstart.py
 """
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 from nepal_gov_agent import GovRAG
 
 rag = GovRAG(corpus_dir="Data/")

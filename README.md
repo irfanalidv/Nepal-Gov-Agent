@@ -308,7 +308,13 @@ Confidence: high
 ### 8. Corpus statistics
 
 ```python
-rag = GovRAG(corpus_dir="Data/", verbose=False)
+import logging
+
+from nepal_gov_agent import GovRAG
+
+logging.basicConfig(level=logging.WARNING)
+
+rag = GovRAG(corpus_dir="Data/")
 print(rag.stats)
 ```
 
