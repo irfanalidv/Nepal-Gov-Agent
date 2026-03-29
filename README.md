@@ -255,7 +255,7 @@ English recall@3:   0.833
 ============================================================
 ```
 
-> **Note:** These numbers measure **retrieval**, not generated answer quality. Recall@3 = 0.857 means the expected keywords showed up in the top 3 retrieved blocks for 6 of 7 queries. Doc hit rate = 1.000 means the expected source PDF (filename) appeared in the top‑5 hits for every query. See [Benchmark: retrieval not answer quality](#benchmark-retrieval-not-answer-quality) below.
+> **Note:** These numbers measure **retrieval**, not generated answer quality. Recall@3 = 0.857 means the expected keywords appeared in the top 3 retrieved blocks for 6 of 7 queries. Doc hit rate = 1.000 means the expected source PDF appeared in the top‑5 hits for every query (harness normalizes the `pdf:` doc id prefix). See [Benchmark: retrieval not answer quality](#benchmark-retrieval-not-answer-quality) below.
 
 ---
 
@@ -316,7 +316,7 @@ print(rag.stats)
 ```python
 {
     "documents": 6,
-    "blocks": 312,
+    "blocks": 856,
     "corpus_dir": "Data/",
     "offline": True
 }
@@ -369,11 +369,12 @@ Nepal GovAgent
 │   ├── Vector index (sentence-transformers, all-MiniLM-L6-v2)
 │   ├── Hybrid retrieval (BM25 0.6 + vector 0.4, RRF fusion)
 │   ├── Structure expansion (parent/child block hierarchy)
+│   ├── QueryFallback for low-confidence query retries
 │   ├── Inline citation enforcement
 │   └── SQLite embedding + retrieval cache (offline)
 │
 ├── Reliability Layer  →  ragfallback==2.0.2
-│   └── QueryFallback: retries with rephrased query on low confidence
+│   └── Metrics and adaptive utilities (PyPI dependency; GovRAG benchmark uses keyword / Recall@k on retrieved blocks)
 │
 └── Agent Layer        →  agentensemble==0.3.0 (Phase 2)
     └── Multi-step workflows, SQLite session memory (planned)
