@@ -176,8 +176,7 @@ Priority contributions needed:
 - Integration with existing municipality systems
 - Hardware testing on low-spec servers common in Nepal's government infrastructure
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
+See CONTRIBUTING.md for guidelines (coming soon).
 ---
 
 ## About
