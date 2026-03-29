@@ -41,6 +41,7 @@ def ingest_corpus(
     if not corpus_path.exists():
         raise FileNotFoundError(f"Corpus directory not found: {corpus_dir}")
 
+    # Only the corpus root is scanned (not subdirectories); keep PDFs flat e.g. Data/*.pdf.
     pdf_files = list(corpus_path.glob("*.pdf"))
     if not pdf_files:
         raise ValueError(f"No PDF files found in {corpus_dir}")

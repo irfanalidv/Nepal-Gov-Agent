@@ -51,9 +51,9 @@ Each library is independently published on PyPI and production-tested. Nepal Gov
 Every answer is traceable to a specific block in a specific government document. Powered by RAGNav's `answer_with_inline_citations` — every sentence must include a `[[block_id]]` reference or the answer is rejected.
 
 ```python
-from nepal_gov_agent import GovRAG
+from nepal_gov_agent import GovRAG, GovRAGConfig
 
-rag = GovRAG(corpus_dir="Data/", offline=True)
+rag = GovRAG(corpus_dir="Data/", config=GovRAGConfig(language="auto"))
 result = rag.ask("नागरिकता नवीकरण गर्न के चाहिन्छ?")
 
 print(result.answer)   # Answer with inline citations
@@ -173,14 +173,10 @@ pip install pymupdf sentence-transformers
 ## Quick start
 
 ```python
-from nepal_gov_agent import GovRAG
+from nepal_gov_agent import GovRAG, GovRAGConfig
 
-# Works fully offline
-rag = GovRAG(
-    corpus_dir="Data/",
-    offline=True,
-    language="auto",    # Handles Nepali + English
-)
+# Works fully offline by default (local embeddings, no API keys)
+rag = GovRAG(corpus_dir="Data/", config=GovRAGConfig(language="auto"))
 
 # Ask in Nepali
 result = rag.ask("नागरिकता नवीकरण गर्न के चाहिन्छ?")
@@ -193,6 +189,10 @@ print(result.answer)
 print(result.sources)
 ```
 
+### Benchmark: retrieval, not answer quality
+
+`run_benchmark` / `nepal-gov-agent benchmark` score **whether the right material was retrieved** (e.g. expected keywords or document in the top‑k blocks). They do **not** measure generated answer correctness, BLEU/ROUGE, or LLM-as-judge quality. When reporting to stakeholders, phrase it as: “Recall@3 = 0.86 means the relevant document content appeared in the top 3 retrieved blocks 86% of the time,” not “answers are 86% accurate.”
+
 ---
 
 ## Roadmap
@@ -200,11 +200,11 @@ print(result.sources)
 ### Phase 1 — RAG core (current focus)
 
 - [x] Seed corpus: Nepal government documents in `Data/`
-- [ ] `GovRAG` class: unified API over RAGNav + ragfallback
+- [x] `GovRAG` class: unified API over RAGNav + ragfallback
 - [ ] Nepali + English hybrid chunking strategy
-- [ ] Offline embedding with sentence-transformers
-- [ ] Citation validation for every answer
-- [ ] CLI: `nepal-gov-agent ask "your question"`
+- [x] Offline embedding with sentence-transformers
+- [ ] Citation validation for every answer (requires a real LLM client in `ask()`)
+- [x] CLI: `nepal-gov-agent ask|benchmark|stats`
 
 ### Phase 2 — Agent capabilities
 

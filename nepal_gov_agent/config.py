@@ -26,9 +26,8 @@ class GovRAGConfig:
     # Embedding model — offline, CPU-runnable
     embedding_model: str = "all-MiniLM-L6-v2"
 
-    # Fallback config
+    # Fallback config (RAGNav QueryFallback)
     max_fallback_attempts: int = 3
-    min_confidence: float = 0.5
 
     # Cache
     cache_dir: str = ".nepal_gov_cache"

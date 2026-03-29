@@ -11,6 +11,19 @@ requires-python = ">=3.9"
 license = "MIT"
 authors = [{ name = "Irfan Ali", email = "irfanali29@hotmail.com" }]
 keywords = ["nepal", "government", "rag", "agentic-ai", "llm", "offline", "nepali"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Government",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Natural Language :: Nepali",
+]
 
 dependencies = [
     "ragnav>=0.3.0",
