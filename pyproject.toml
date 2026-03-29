@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nepal-gov-agent"
+version = "0.1.0"
+description = "Agentic AI framework for Nepal government service automation — offline-capable, Nepali-language aware, with RAG and MLOps infra built in."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "Irfan Ali", email = "irfanali29@hotmail.com" }]
+keywords = ["nepal", "government", "rag", "agentic-ai", "llm", "offline", "nepali"]
+
+dependencies = [
+    "ragnav>=0.3.0",
+    "ragfallback>=2.0.2",
+    "agentensemble>=0.3.0",
+    "pymupdf>=1.26.0",
+    "sentence-transformers>=3.0.0",
+    "rank-bm25>=0.2.2",
+    "numpy>=1.26.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "pytest-cov>=5.0.0", "black>=24.0.0", "ruff>=0.6.0", "python-dotenv>=1.0.1"]
+ollama = ["langchain-community>=0.0.20"]
+mistral = [
+    "mistralai>=1.9.0",
+    "python-dotenv>=1.0.1",
+]
+
+[project.scripts]
+nepal-gov-agent = "nepal_gov_agent.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/irfanalidv/Nepal-Gov-Agent"
+Repository = "https://github.com/irfanalidv/Nepal-Gov-Agent"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nepal_gov_agent*"]

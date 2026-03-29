@@ -1,0 +1,8 @@
+.env
+*.db
+.nepal_gov_cache/
+dist/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+benchmark_results.txt
