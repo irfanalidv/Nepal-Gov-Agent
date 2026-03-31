@@ -1,6 +1,7 @@
 .env
 *.db
 .nepal_gov_cache/
+examples/nepal_gov_data/
 dist/
 *.egg-info/
 __pycache__/
