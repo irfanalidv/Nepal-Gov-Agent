@@ -16,7 +16,7 @@ from .config import GovRAGConfig
 from .corpus import download_corpus
 from .rag import GovRAG, GovRAGResult
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 __all__ = [
     "GovRAG",

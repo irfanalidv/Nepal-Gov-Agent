@@ -398,7 +398,7 @@ result = rag.ask("What is the Digital Nepal Framework?")
 
 ### Seed corpus (opt-in)
 
-The wheel does **not** bundle PDFs. The same files as `Data/` on GitHub can be fetched in one call when **you** choose:
+The wheel does **not** bundle PDFs. **Five** policy/gazette PDFs from `Data/` on GitHub can be fetched in one call when **you** choose (the large Law Commission *Legal Maxims* volume in `Data/` is **not** included in the seed download — it can dominate retrieval over small Nepali ordinances):
 
 ```python
 from nepal_gov_agent import download_corpus
@@ -413,7 +413,8 @@ corpus_dir = download_corpus()  # → ./nepal_gov_data/ (absolute path returned)
 | Digital Nepal Framework 2.0 | English |
 | प्रतिनिधि सभा सदस्य निर्वाचन अध्यादेश २०८२ | Nepali |
 | मानव अधिकार पुरस्कार कोष सञ्चालन नियमावली २०७५ | Nepali |
-| Additional government PDF (seed set; see `Data/` on GitHub for filename) | — |
+
+Clone the repo or copy from `Data/` if you want every file (including reference volumes).
 
 ### Bring your own corpus
 
@@ -511,7 +512,7 @@ This is a meaningful signal for infrastructure quality. Answer quality evaluatio
 
 ## Roadmap
 
-**Current release:** `0.2.2` on PyPI — **16** tests passing (9 RAG core + 7 agent); seed corpus via `download_corpus()` (opt-in).
+**Current release:** `0.2.3` on PyPI — **16** tests passing (9 RAG core + 7 agent); seed corpus via `download_corpus()` (opt-in, five PDFs).
 
 ### Phase 1 — RAG core ✅
 - [x] `GovRAG` class: hybrid BM25 + vector retrieval over Nepal gov corpus
