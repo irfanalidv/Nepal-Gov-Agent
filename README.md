@@ -78,6 +78,43 @@ dnf_jbji8eb.pdf page 4
 
 ---
 
+## GovAgent workflows (Phase 2)
+
+`GovAgent` layers [AgentEnsemble](https://github.com/irfanalidv/AgentEnsemble) pipeline orchestration on top of `GovRAG`, with SQLite session memory. Workflows: **`document_qa`** (default), **`service_guide`** (eligibility then procedure), **`corpus_search`** (raw blocks, no synthesis).
+
+```python
+import logging
+from nepal_gov_agent import GovRAG, GovAgent
+
+logging.basicConfig(level=logging.INFO)
+
+rag = GovRAG(corpus_dir="Data/")
+agent = GovAgent(rag=rag, session_id="demo")
+
+result = agent.run("What is the role of the National AI Centre?")
+print(result.answer)
+print("Confidence:", result.confidence)
+
+guide = agent.run(
+    "How do I apply for a citizenship certificate renewal in Nepal?",
+    workflow="service_guide",
+)
+print(guide.answer[:500])
+```
+
+CLI:
+
+```bash
+nepal-gov-agent agent "How do I renew my citizenship?"
+nepal-gov-agent agent "How do I get a driving licence?" --workflow service_guide
+nepal-gov-agent agent "AI policy infrastructure" --workflow corpus_search
+nepal-gov-agent agent "..." --session my_session_id
+```
+
+Examples: `examples/agent_workflow.py`, `examples/service_guide.py`.
+
+---
+
 ## Use cases
 
 ### 1. Query the Nepal AI Policy (English)
@@ -402,7 +439,7 @@ When presenting results to stakeholders:
 
 > "Recall@3 = 0.857 means that for 6 out of 7 test queries, the relevant section of the government document appeared in the top 3 retrieved chunks."
 
-This is a meaningful signal for infrastructure quality. Answer quality evaluation (LLM-as-judge, BLEU/ROUGE) is planned for Phase 2.
+This is a meaningful signal for infrastructure quality. Answer quality evaluation (LLM-as-judge, BLEU/ROUGE) is planned for a later phase.
 
 ---
 
@@ -430,6 +467,8 @@ This is a meaningful signal for infrastructure quality. Answer quality evaluatio
 
 ## Roadmap
 
+**Current release:** `0.2.0` on PyPI — **16** tests passing (9 RAG core + 7 agent).
+
 ### Phase 1 — RAG core ✅
 - [x] `GovRAG` class: hybrid BM25 + vector retrieval over Nepal gov corpus
 - [x] Offline embedding with `sentence-transformers`
@@ -437,11 +476,13 @@ This is a meaningful signal for infrastructure quality. Answer quality evaluatio
 - [x] Inline citation support (with external LLM)
 - [x] `nepal-gov-agent ask / benchmark / stats` CLI
 - [x] Nepal-specific benchmark harness (Recall@k, keyword hit rate)
-- [x] 9 tests passing
+- [x] Phase 1 test suite (9 tests)
 
-### Phase 2 — Agent capabilities
-- [ ] `GovAgent` class: multi-step task execution via AgentEnsemble
-- [ ] Common government workflow templates (citizenship, permits, licenses)
+### Phase 2 — Agent capabilities (shipped in 0.2.0) ✅
+- [x] `GovAgent` class: `document_qa`, `service_guide`, `corpus_search` via AgentEnsemble pipeline + SQLite sessions
+- [x] `nepal-gov-agent agent` CLI (`--workflow`, `--session`)
+- [x] Phase 2 test suite (7 tests)
+- [ ] Richer workflow templates (permits, licenses, sector-specific guides)
 - [ ] Nagarik App integration layer
 - [ ] Corpus expansion: ministry circulars 2080–2082
 
