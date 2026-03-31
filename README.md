@@ -7,6 +7,7 @@
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/nepal-gov-agent?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/nepal-gov-agent)
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![Status](https://img.shields.io/badge/status-active%20development-orange.svg)]()
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/irfanalidv/Nepal-Gov-Agent/blob/main/examples/Nepal_GovAgent_Demo.ipynb)
 
 ---
 
@@ -393,7 +394,17 @@ result = rag.ask("What is the Digital Nepal Framework?")
 
 ---
 
-## What's in the corpus (seed)
+## Corpus
+
+### Seed corpus (opt-in)
+
+The wheel does **not** bundle PDFs. The same files as `Data/` on GitHub can be fetched in one call when **you** choose:
+
+```python
+from nepal_gov_agent import download_corpus
+
+corpus_dir = download_corpus()  # → ./nepal_gov_data/ (absolute path returned)
+```
 
 | Document | Language |
 |---|---|
@@ -402,8 +413,19 @@ result = rag.ask("What is the Digital Nepal Framework?")
 | Digital Nepal Framework 2.0 | English |
 | प्रतिनिधि सभा सदस्य निर्वाचन अध्यादेश २०८२ | Nepali |
 | मानव अधिकार पुरस्कार कोष सञ्चालन नियमावली २०७५ | Nepali |
+| Additional government PDF (seed set; see `Data/` on GitHub for filename) | — |
 
-Add your own PDFs to `Data/` — they are automatically ingested on next run. Only PDFs in the root of `Data/` are picked up (not subdirectories).
+### Bring your own corpus
+
+`GovRAG` works with any folder of Nepal government PDFs — ministry circulars, municipal SOPs, provincial guidelines, land records, anything you are allowed to use:
+
+```python
+rag = GovRAG(corpus_dir="./my_ministry_docs/")
+```
+
+No extra configuration. Put PDFs in a single folder (not subfolders) and point `corpus_dir` at it.
+
+**Contributing documents:** If you have publicly available Nepal government PDFs, open a PR adding them to `Data/` — expanding the seed corpus is one of the highest-impact contributions to this project.
 
 ---
 
@@ -489,7 +511,7 @@ This is a meaningful signal for infrastructure quality. Answer quality evaluatio
 
 ## Roadmap
 
-**Current release:** `0.2.0` on PyPI — **16** tests passing (9 RAG core + 7 agent).
+**Current release:** `0.2.2` on PyPI — **16** tests passing (9 RAG core + 7 agent); seed corpus via `download_corpus()` (opt-in).
 
 ### Phase 1 — RAG core ✅
 - [x] `GovRAG` class: hybrid BM25 + vector retrieval over Nepal gov corpus
