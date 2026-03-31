@@ -2,11 +2,11 @@
 Default configuration tuned for Nepal government corpus.
 
 Key decisions:
-- BM25 weight higher (0.6) than vector (0.4): Nepal gov docs have specific
-  legal terminology that keyword search handles better than embeddings.
-- Offline=True by default: no cloud API assumptions.
-- Sentence-transformer model: all-MiniLM-L6-v2 — small, fast, CPU-runnable.
-- k_final=8: enough context without overloading LLM context window.
+- Balanced BM25 / vector weights (0.5 / 0.5) with multilingual embeddings
+  so Nepali queries benefit from dense retrieval as well as keywords.
+- Offline by default: sentence-transformers + optional local Ollama for answers.
+- Default embedding model: intfloat/multilingual-e5-small (100+ languages).
+- k_final=8: enough context without overloading the answer LLM context window.
 """
 
 from __future__ import annotations
@@ -16,15 +16,15 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class GovRAGConfig:
-    # Retrieval weights — BM25 heavier for legal/gov terminology
-    w_bm25: float = 0.6
-    w_vec: float = 0.4
+    # Retrieval weights — balanced with multilingual embeddings (Nepali + English)
+    w_bm25: float = 0.5
+    w_vec: float = 0.5
     k_bm25: int = 30
     k_vec: int = 30
     k_final: int = 8
 
-    # Embedding model — offline, CPU-runnable
-    embedding_model: str = "all-MiniLM-L6-v2"
+    # Embedding model — offline, multilingual (includes Nepali)
+    embedding_model: str = "intfloat/multilingual-e5-small"
 
     # Fallback config (RAGNav QueryFallback)
     max_fallback_attempts: int = 3

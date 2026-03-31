@@ -14,9 +14,11 @@ from .agent import GovAgent, GovAgentResult
 from .benchmark import BenchmarkResult, NEPAL_GOV_QA, run_benchmark
 from .config import GovRAGConfig
 from .corpus import download_corpus
+from .llm_ollama import OllamaClient
+from .preprocess import NEPALI_QUESTION_SUFFIXES, preprocess_query
 from .rag import GovRAG, GovRAGResult
 
-__version__ = "0.2.3"
+__version__ = "0.3.0"
 
 __all__ = [
     "GovRAG",
@@ -24,6 +26,9 @@ __all__ = [
     "GovRAGConfig",
     "GovAgent",
     "GovAgentResult",
+    "OllamaClient",
+    "preprocess_query",
+    "NEPALI_QUESTION_SUFFIXES",
     "download_corpus",
     "run_benchmark",
     "NEPAL_GOV_QA",

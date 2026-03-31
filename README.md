@@ -394,7 +394,7 @@ config = GovRAGConfig(
     k_final=12,              # Retrieve more blocks
     max_fallback_attempts=5, # More retries on low confidence
     cache_dir=".my_cache",
-    embedding_model="all-MiniLM-L6-v2",
+    embedding_model="intfloat/multilingual-e5-small",
 )
 
 rag = GovRAG(corpus_dir="Data/", config=config)
@@ -451,8 +451,8 @@ Nepal GovAgent
 ├── RAG Layer          →  ragnav==0.3.0
 │   ├── PDF ingestion (PyMuPDF, page-level blocks)
 │   ├── BM25 index (rank-bm25)
-│   ├── Vector index (sentence-transformers, all-MiniLM-L6-v2)
-│   ├── Hybrid retrieval (BM25 0.6 + vector 0.4, RRF fusion)
+│   ├── Vector index (sentence-transformers, multilingual-e5-small by default)
+│   ├── Hybrid retrieval (BM25 0.5 + vector 0.5 by default, RRF fusion)
 │   ├── Structure expansion (parent/child block hierarchy)
 │   ├── QueryFallback for low-confidence query retries
 │   ├── Inline citation enforcement
@@ -466,8 +466,8 @@ Nepal GovAgent
 ```
 
 **Key design decisions:**
-- BM25 weight 0.6 > vector 0.4: Nepal gov docs use specific legal terminology that keyword search handles better than embeddings
-- Offline by default: `all-MiniLM-L6-v2` runs on CPU with no API key needed
+- Default hybrid weights 0.5 / 0.5: multilingual embeddings help Nepali queries; BM25 still anchors legal keywords
+- Offline by default: `intfloat/multilingual-e5-small` runs on CPU with no API key needed
 - SQLite cache: embeddings cached locally — second run is instant
 - Fallback only on `ConfidenceLevel.LOW`: avoids unnecessary LLM calls on already-confident retrievals
 
@@ -509,7 +509,7 @@ This is a meaningful signal for infrastructure quality. Answer quality evaluatio
 
 ## Roadmap
 
-**Current release:** `0.2.3` on PyPI — **16** tests passing (9 RAG core + 7 agent); seed corpus via `download_corpus()` (opt-in, five PDFs).
+**Current release:** `0.3.0` on PyPI — **18** tests passing (10 RAG core + 7 agent + 1 preprocess); seed corpus via `download_corpus()` (opt-in, five PDFs).
 
 ### Phase 1 — RAG core ✅
 - [x] `GovRAG` class: hybrid BM25 + vector retrieval over Nepal gov corpus

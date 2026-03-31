@@ -11,6 +11,7 @@ Designed for offline use. No API keys required by default.
 from __future__ import annotations
 
 import logging
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -30,8 +31,50 @@ from ragnav.retrieval import RAGNavIndex, RAGNavRetriever
 
 from .config import DEFAULT_RAG_CONFIG, GovRAGConfig
 from .ingest import ingest_corpus
+from .preprocess import preprocess_query
 
 logger = logging.getLogger(__name__)
+
+_EMBEDDING_MODEL_MARKER = ".embedding_model"
+
+
+def _invalidate_embedding_cache_if_model_changed(cache_dir: Path, model: str) -> None:
+    """Remove SQLite embedding / retrieval DBs when ``embedding_model`` changes."""
+    if not cache_dir.is_dir():
+        return
+    marker = cache_dir / _EMBEDDING_MODEL_MARKER
+    prev: str | None = None
+    if marker.is_file():
+        try:
+            prev = marker.read_text(encoding="utf-8").strip()
+        except OSError:
+            prev = None
+    elif any(cache_dir.glob("*.db")):
+        # Upgraded install: had embeddings before marker file existed — rebuild once.
+        prev = ""
+    else:
+        return
+    if prev == model:
+        return
+    logger.warning(
+        "Embedding model changed (%r -> %r); clearing cache at %s",
+        prev,
+        model,
+        cache_dir,
+    )
+    for p in list(cache_dir.iterdir()):
+        try:
+            if p.is_file() or p.is_symlink():
+                p.unlink(missing_ok=True)
+            elif p.is_dir():
+                shutil.rmtree(p, ignore_errors=True)
+        except OSError as exc:
+            logger.warning("Could not remove %s: %s", p, exc)
+    marker.unlink(missing_ok=True)
+
+
+def _write_embedding_model_marker(cache_dir: Path, model: str) -> None:
+    (cache_dir / _EMBEDDING_MODEL_MARKER).write_text(model, encoding="utf-8")
 
 
 @dataclass
@@ -54,6 +97,7 @@ class GovRAG:
         self.corpus_dir = corpus_dir
 
         cache_dir = Path(config.cache_dir)
+        _invalidate_embedding_cache_if_model_changed(cache_dir, config.embedding_model)
         cache_dir.mkdir(parents=True, exist_ok=True)
         emb_kv = SqliteKV(SqliteCacheConfig(db_path=str(cache_dir / "embeddings.db")))
         ret_kv = SqliteKV(SqliteCacheConfig(db_path=str(cache_dir / "retrieval.db")))
@@ -83,6 +127,8 @@ class GovRAG:
             llm=self._llm,
         )
 
+        _write_embedding_model_marker(cache_dir, config.embedding_model)
+
         logger.info(
             "Ready: %d blocks indexed across %d documents",
             len(self._blocks),
@@ -100,8 +146,10 @@ class GovRAG:
         cfg = self.config
         k = k_final or cfg.k_final
 
+        q = preprocess_query(query)
+
         retrieval = self._retriever.retrieve(
-            query,
+            q,
             k_bm25=cfg.k_bm25,
             k_vec=cfg.k_vec,
             k_final=k,
@@ -112,7 +160,7 @@ class GovRAG:
         )
 
         fallback_triggered = False
-        query_used = query
+        query_used = q
 
         if retrieval.confidence == ConfidenceLevel.LOW and cfg.max_fallback_attempts > 1:
             fb = QueryFallback(
@@ -124,7 +172,7 @@ class GovRAG:
                 ),
             )
             fb_result = fb.retrieve(
-                query,
+                q,
                 k_bm25=cfg.k_bm25,
                 k_vec=cfg.k_vec,
                 k_final=k,
@@ -135,7 +183,7 @@ class GovRAG:
             )
             if fb_result.improved:
                 retrieval = fb_result.final_result
-                query_used = fb_result.winning_query
+                query_used = preprocess_query(fb_result.winning_query)
                 fallback_triggered = True
 
         blocks = retrieval.blocks
@@ -159,16 +207,16 @@ class GovRAG:
             try:
                 cited: CitedAnswer = answer_with_inline_citations(
                     llm=gen_llm,
-                    query=query,
+                    query=q,
                     blocks=blocks,
                 )
                 answer = cited.answer
                 cited_ids = cited.cited_block_ids
             except Exception:
-                answer = self._simple_answer(query, blocks)
+                answer = self._simple_answer(q, blocks)
                 cited_ids = tuple(b.block_id for b in blocks[:3])
         else:
-            answer = self._simple_answer(query, blocks)
+            answer = self._simple_answer(q, blocks)
             cited_ids = tuple(b.block_id for b in blocks[:3])
 
         return GovRAGResult(
@@ -193,8 +241,9 @@ class GovRAG:
         return "\n\n---\n\n".join(parts)
 
     def search(self, query: str, k: int = 5) -> list[dict[str, Any]]:
+        q = preprocess_query(query)
         return self._retriever.retrieve_raw(
-            query,
+            q,
             max_blocks=k,
             k_bm25=self.config.k_bm25,
             k_vec=self.config.k_vec,
