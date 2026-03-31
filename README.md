@@ -6,7 +6,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/nepal-gov-agent.svg)](https://pypi.org/project/nepal-gov-agent/)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/nepal-gov-agent?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/nepal-gov-agent)
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/status-active%20development-orange.svg)]()
+[![Status](https://img.shields.io/badge/status-active%20development-orange.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/irfanalidv/Nepal-Gov-Agent/blob/main/examples/Nepal_GovAgent_Demo.ipynb)
 
 ---
@@ -46,11 +46,14 @@ pip install nepal-gov-agent[ollama]    # Local Ollama
 
 ## Quick start
 
+PDFs are **not** bundled on PyPI. Fetch the seed set with `download_corpus()` (writes `./nepal_gov_data/`), or clone this repo and point `corpus_dir` at `Data/` for all **six** PDFs including Legal Maxims.
+
 ```python
-from nepal_gov_agent import GovRAG, GovRAGConfig
+from nepal_gov_agent import GovRAG, GovRAGConfig, download_corpus
 
 config = GovRAGConfig()  # offline by default; tune via GovRAGConfig fields
-rag = GovRAG(corpus_dir="Data/", config=config)
+corpus_dir = download_corpus()  # or "Data/" if you cloned the repo
+rag = GovRAG(corpus_dir=corpus_dir, config=config)
 result = rag.ask("What is the vision of Nepal's National AI Policy?")
 
 print(result.answer)
@@ -86,11 +89,12 @@ dnf_jbji8eb.pdf page 4
 
 ```python
 import logging
-from nepal_gov_agent import GovRAG, GovAgent
+from nepal_gov_agent import GovRAG, GovAgent, download_corpus
 
 logging.basicConfig(level=logging.INFO)
 
-rag = GovRAG(corpus_dir="Data/")
+corpus_dir = download_corpus()  # or "Data/" if you cloned the repo
+rag = GovRAG(corpus_dir=corpus_dir)
 agent = GovAgent(rag=rag, session_id="demo")
 
 result = agent.run("What is the role of the National AI Centre?")
@@ -119,12 +123,15 @@ Examples: `examples/agent_workflow.py`, `examples/service_guide.py`.
 
 ## Use cases
 
+Examples below use `corpus_dir="Data/"` after **cloning** the repository. If you installed from **PyPI** only, run `corpus_dir = download_corpus()` once and pass that path instead.
+
 ### 1. Query the Nepal AI Policy (English)
 
 ```python
-from nepal_gov_agent import GovRAG
+from nepal_gov_agent import GovRAG, download_corpus
 
-rag = GovRAG(corpus_dir="Data/")
+corpus_dir = download_corpus()  # or "Data/" if you cloned the repo
+rag = GovRAG(corpus_dir=corpus_dir)
 
 result = rag.ask("What is the role of the National AI Centre?")
 print(result.answer)
@@ -235,11 +242,12 @@ AI Centre shall serve as its Secretariat...
 ```python
 import os
 from ragnav.llm.mistral import MistralClient
-from nepal_gov_agent import GovRAG
+from nepal_gov_agent import GovRAG, download_corpus
 
 os.environ["MISTRAL_API_KEY"] = "your_key_here"  # or load from .env
 
-rag = GovRAG(corpus_dir="Data/")
+corpus_dir = download_corpus()  # or "Data/" if you cloned the repo
+rag = GovRAG(corpus_dir=corpus_dir)
 llm = MistralClient()
 
 result = rag.ask(
@@ -313,8 +321,9 @@ nepal-gov-agent ask "What are fundamental rights?" --corpus /path/to/docs/
 # Retrieve more blocks
 nepal-gov-agent ask "AI infrastructure" --k 10
 
-# Run benchmark
+# Run benchmark (clone → Data/; PyPI seed → ./nepal_gov_data/)
 nepal-gov-agent benchmark --corpus Data/
+nepal-gov-agent benchmark --corpus ./nepal_gov_data/
 
 # Show corpus stats
 nepal-gov-agent stats
@@ -396,15 +405,9 @@ result = rag.ask("What is the Digital Nepal Framework?")
 
 ## Corpus
 
-### Seed corpus (opt-in)
+### Repository `Data/` on GitHub (6 PDFs)
 
-The wheel does **not** bundle PDFs. **Five** policy/gazette PDFs from `Data/` on GitHub can be fetched in one call when **you** choose (the large Law Commission *Legal Maxims* volume in `Data/` is **not** included in the seed download — it can dominate retrieval over small Nepali ordinances):
-
-```python
-from nepal_gov_agent import download_corpus
-
-corpus_dir = download_corpus()  # → ./nepal_gov_data/ (absolute path returned)
-```
+The GitHub repo ships six Nepal government PDFs under `Data/`:
 
 | Document | Language |
 |---|---|
@@ -413,38 +416,32 @@ corpus_dir = download_corpus()  # → ./nepal_gov_data/ (absolute path returned)
 | Digital Nepal Framework 2.0 | English |
 | प्रतिनिधि सभा सदस्य निर्वाचन अध्यादेश २०८२ | Nepali |
 | मानव अधिकार पुरस्कार कोष सञ्चालन नियमावली २०७५ | Nepali |
+| Legal Maxims (Latin/English/Nepali) — Nepal Law Commission | Nepali/English |
 
-Clone the repo or copy from `Data/` if you want every file (including reference volumes).
+### Opt-in seed download (`download_corpus()`)
+
+The wheel does **not** bundle PDFs. `download_corpus()` pulls **five** of the files above into `./nepal_gov_data/` — it **omits** *Legal Maxims* (`1714977234_32.pdf`) because that reference volume is very large and often dominates hybrid retrieval over shorter Nepali ordinances. Clone the repo or copy the sixth PDF into your folder when you want the full six-document corpus locally.
+
+```python
+from nepal_gov_agent import download_corpus, GovRAG
+
+corpus_dir = download_corpus()  # → ./nepal_gov_data/ (absolute path returned)
+rag = GovRAG(corpus_dir=corpus_dir)
+```
 
 ### Bring your own corpus
 
-`GovRAG` works with any folder of Nepal government PDFs — ministry circulars, municipal SOPs, provincial guidelines, land records, anything you are allowed to use:
+Point `GovRAG` at any folder of Nepal government PDFs — ministry circulars, municipal SOPs, provincial guidelines, land records, anything you are allowed to use:
 
 ```python
 rag = GovRAG(corpus_dir="./my_ministry_docs/")
 ```
 
-No extra configuration. Put PDFs in a single folder (not subfolders) and point `corpus_dir` at it.
+No extra configuration. Put PDFs in a single folder (not subfolders) and pass that path as `corpus_dir`.
 
-**Contributing documents:** If you have publicly available Nepal government PDFs, open a PR adding them to `Data/` — expanding the seed corpus is one of the highest-impact contributions to this project.
+**Contributing:** If you have publicly available Nepal government PDFs, open a PR adding them to `Data/` — expanding the corpus is the highest-priority contribution this project needs.
 
 ---
-
-## Scope and limitations
-
-Nepal GovAgent is a **research prototype**. It is not production-ready for government deployment.
-
-The benchmark measures **retrieval quality** — whether the right content appears in the top-k retrieved blocks. It does not measure answer safety, factual correctness, or suitability for official use.
-
-Prerequisites for any .gov deployment that this project does not provide:
-
-- Security audit and penetration testing
-- Data sovereignty controls
-- Human oversight layer — every answer reviewed before action
-- Legal framework and government approval
-- Integration with live government systems
-
-This project establishes the retrieval foundation layer. The trust, oversight, and sovereignty layers are separate concerns that must be built on top before any production use.
 
 ## Under the hood
 
@@ -536,6 +533,23 @@ This is a meaningful signal for infrastructure quality. Answer quality evaluatio
 - [ ] Audit trail: every agent action logged and explainable
 - [ ] Deployment guide for municipal servers (low-spec hardware)
 - [ ] Bhashini + Bolna integration for voice workflows
+
+---
+
+## Scope and Limitations
+
+Nepal GovAgent is a **research prototype**. It is not production-ready for government deployment.
+
+The benchmark measures **retrieval quality** — whether the right content appears in the top-k retrieved blocks. It does not measure answer safety, factual correctness, or suitability for official use.
+
+Prerequisites for any .gov deployment that this project does not provide:
+
+- Security audit and penetration testing
+- Data sovereignty controls and legal framework
+- Human oversight layer — every answer reviewed before action
+- Government approval and integration with live systems
+
+This project establishes the retrieval foundation layer. The trust, oversight, and sovereignty layers are separate concerns that must be built on top before any production use.
 
 ---
 
