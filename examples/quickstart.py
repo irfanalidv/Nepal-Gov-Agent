@@ -1,9 +1,11 @@
 """
-Nepal GovAgent — Quickstart example.
-
-Run:
-    pip install nepal-gov-agent
-    python examples/quickstart.py
+Nepal GovAgent quickstart (English + Nepali)
+============================================
+Problem  : Without cited retrieval, users cannot verify answers against official government PDFs.
+Module   : nepal_gov_agent.rag.GovRAG
+Dataset  : Nepal government PDFs (Data/ folder — included in repo)
+Install  : pip install nepal-gov-agent
+Env vars : NONE
 """
 
 import logging

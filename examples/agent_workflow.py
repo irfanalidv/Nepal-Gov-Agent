@@ -1,3 +1,13 @@
+"""
+GovAgent document_qa workflow
+=============================
+Problem  : Government document Q&A requires source tracing — bare LLM answers are unverifiable.
+Module   : nepal_gov_agent.agent.GovAgent
+Dataset  : Nepal government PDFs (Data/ folder — included in repo)
+Install  : pip install nepal-gov-agent
+Env vars : NONE
+"""
+
 import logging
 
 from nepal_gov_agent import GovRAG

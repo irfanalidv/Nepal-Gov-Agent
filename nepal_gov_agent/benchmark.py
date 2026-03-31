@@ -13,10 +13,13 @@ Nepal gov corpus benchmark will differ — run this to get your numbers.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
 from .rag import GovRAG
+
+logger = logging.getLogger(__name__)
 
 
 NEPAL_GOV_QA = [
@@ -173,7 +176,7 @@ def run_benchmark(
 
         if verbose:
             status = "✓" if kw_hit else "✗"
-            print(f"  {status} [{lang}] {query[:50]}...")
+            logger.info("  %s [%s] %.50s...", status, lang, query)
 
     def mean(lst: list[float]) -> float:
         return sum(lst) / len(lst) if lst else 0.0
@@ -191,6 +194,6 @@ def run_benchmark(
     )
 
     if verbose:
-        print("\n" + out.report())
+        logger.info("\n%s", out.report())
 
     return out
