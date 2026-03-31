@@ -407,6 +407,22 @@ Add your own PDFs to `Data/` — they are automatically ingested on next run. On
 
 ---
 
+## Scope and limitations
+
+Nepal GovAgent is a **research prototype**. It is not production-ready for government deployment.
+
+The benchmark measures **retrieval quality** — whether the right content appears in the top-k retrieved blocks. It does not measure answer safety, factual correctness, or suitability for official use.
+
+Prerequisites for any .gov deployment that this project does not provide:
+
+- Security audit and penetration testing
+- Data sovereignty controls
+- Human oversight layer — every answer reviewed before action
+- Legal framework and government approval
+- Integration with live government systems
+
+This project establishes the retrieval foundation layer. The trust, oversight, and sovereignty layers are separate concerns that must be built on top before any production use.
+
 ## Under the hood
 
 ```
