@@ -4,6 +4,8 @@ CLI for Nepal GovAgent.
 Usage:
     nepal-gov-agent ask "What is Nepal's AI policy?"
     nepal-gov-agent ask "नागरिकता नवीकरण गर्न के चाहिन्छ?"
+    nepal-gov-agent agent "How do I renew my citizenship?"
+    nepal-gov-agent agent "..." --workflow service_guide --session my_session_id
     nepal-gov-agent benchmark
     nepal-gov-agent stats
 """
@@ -32,6 +34,23 @@ def main() -> None:
 
     stats_parser = subparsers.add_parser("stats", help="Show corpus statistics")
     stats_parser.add_argument("--corpus", default="Data/", help="Corpus directory")
+
+    agent_parser = subparsers.add_parser("agent", help="Run GovAgent workflow")
+    agent_parser.add_argument("query", help="Question or search text")
+    agent_parser.add_argument(
+        "--workflow",
+        default="document_qa",
+        choices=("document_qa", "service_guide", "corpus_search"),
+        help="document_qa | service_guide | corpus_search",
+    )
+    agent_parser.add_argument("--session", default="default", help="Session id for memory")
+    agent_parser.add_argument("--corpus", default="Data/", help="Corpus directory")
+    agent_parser.add_argument(
+        "--k",
+        type=int,
+        default=None,
+        help="k_final for QA / k for corpus_search (defaults: RAG config / 5)",
+    )
 
     args = parser.parse_args()
 
@@ -81,6 +100,31 @@ def main() -> None:
         print(f"Blocks:    {stats['blocks']}")
         print(f"Corpus:    {stats['corpus_dir']}")
         print(f"Offline:   {stats['offline']}")
+
+    elif args.command == "agent":
+        logging.basicConfig(level=logging.INFO)
+        from .agent import GovAgent
+        from .rag import GovRAG
+
+        rag = GovRAG(corpus_dir=args.corpus)
+        gov_agent = GovAgent(rag=rag, session_id=args.session)
+        result = gov_agent.run(args.query, workflow=args.workflow, k_final=args.k)
+
+        print("\n" + "=" * 60)
+        print("ANSWER")
+        print("=" * 60)
+        print(result.answer)
+        print("\n" + "=" * 60)
+        print("META")
+        print("=" * 60)
+        print("Workflow:   %s" % result.workflow)
+        print("Confidence: %s" % result.confidence)
+        print("Steps:      %d" % len(result.steps))
+        print("Sources:    %d" % len(result.sources))
+        for i, src in enumerate(result.sources[:5], 1):
+            doc = src.get("doc", "?")
+            page = src.get("page", "?")
+            print("  %d. %s (page %s)" % (i, doc, page))
 
     else:
         parser.print_help()
