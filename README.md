@@ -270,7 +270,7 @@ results = run_benchmark(rag, verbose=True)
 print(results.report())
 ```
 
-**Real output:**
+**Real output** (from the full local `Data/` folder, six PDFs; the opt-in `download_corpus()` seed has five — run `run_benchmark(rag)` on your `corpus_dir` for live numbers):
 ```
   ✓ [english] What is the vision of Nepal's National AI Policy?...
   ✓ [english] What are the four pillars of Nepal's AI readiness?...
