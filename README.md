@@ -46,9 +46,10 @@ pip install nepal-gov-agent[ollama]    # Local Ollama
 ## Quick start
 
 ```python
-from nepal_gov_agent import GovRAG
+from nepal_gov_agent import GovRAG, GovRAGConfig
 
-rag = GovRAG(corpus_dir="Data/")
+config = GovRAGConfig()  # offline by default; tune via GovRAGConfig fields
+rag = GovRAG(corpus_dir="Data/", config=config)
 result = rag.ask("What is the vision of Nepal's National AI Policy?")
 
 print(result.answer)
@@ -316,6 +317,11 @@ nepal-gov-agent benchmark --corpus Data/
 
 # Show corpus stats
 nepal-gov-agent stats
+
+# GovAgent (Phase 2): document_qa (default), service_guide, corpus_search
+nepal-gov-agent agent "How do I renew my citizenship?"
+nepal-gov-agent agent "citizenship renewal" --workflow service_guide
+nepal-gov-agent agent "National AI Centre" --workflow corpus_search --session my_session
 ```
 
 **Real CLI output (`ask`):**
