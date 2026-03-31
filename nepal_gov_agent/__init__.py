@@ -13,9 +13,10 @@ Quick start:
 from .agent import GovAgent, GovAgentResult
 from .benchmark import BenchmarkResult, NEPAL_GOV_QA, run_benchmark
 from .config import GovRAGConfig
+from .corpus import download_corpus
 from .rag import GovRAG, GovRAGResult
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     "GovRAG",
@@ -23,6 +24,7 @@ __all__ = [
     "GovRAGConfig",
     "GovAgent",
     "GovAgentResult",
+    "download_corpus",
     "run_benchmark",
     "NEPAL_GOV_QA",
     "BenchmarkResult",
