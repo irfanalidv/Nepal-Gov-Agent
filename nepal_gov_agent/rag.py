@@ -142,6 +142,7 @@ class GovRAG:
         llm: Optional[LLMClient] = None,
         k_final: Optional[int] = None,
         with_citations: bool = True,
+        allowed_doc_ids: Optional[set[str]] = None,
     ) -> GovRAGResult:
         cfg = self.config
         k = k_final or cfg.k_final
@@ -157,6 +158,7 @@ class GovRAG:
             w_vec=cfg.w_vec,
             expand_structure=True,
             retrieval_cache=self._ret_cache,
+            allowed_doc_ids=allowed_doc_ids,
         )
 
         fallback_triggered = False
@@ -180,6 +182,7 @@ class GovRAG:
                 w_vec=cfg.w_vec,
                 expand_structure=True,
                 retrieval_cache=self._ret_cache,
+                allowed_doc_ids=allowed_doc_ids,
             )
             if fb_result.improved:
                 retrieval = fb_result.final_result
