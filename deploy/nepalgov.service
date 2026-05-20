@@ -1,0 +1,37 @@
+[Unit]
+Description=Nepal GovAgent demo (Gradio)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+
+# Adjust these paths to match your VPS layout.
+WorkingDirectory=/srv/nepalgov
+Environment="PATH=/srv/nepalgov/.venv/bin:/usr/bin:/bin"
+Environment="NGA_CORPUS_DIR=/srv/nepalgov/Data"
+Environment="NGA_CACHE_DIR=/srv/nepalgov/.cache"
+Environment="HF_HOME=/srv/nepalgov/.cache/huggingface"
+Environment="GRADIO_ANALYTICS_ENABLED=False"
+
+ExecStart=/srv/nepalgov/.venv/bin/python demo/app.py --host 127.0.0.1 --port 7860
+
+# Resource limits (multilingual-e5-small + 5 PDFs is light, ~700MB resident)
+MemoryMax=2G
+TasksMax=128
+
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/srv/nepalgov/.cache /srv/nepalgov/sessions
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

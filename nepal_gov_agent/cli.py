@@ -31,6 +31,16 @@ def main() -> None:
 
     bench_parser = subparsers.add_parser("benchmark", help="Run retrieval benchmark")
     bench_parser.add_argument("--corpus", default="Data/", help="Corpus directory")
+    bench_parser.add_argument(
+        "--synthetic",
+        action="store_true",
+        help="Use LLM-generated synthetic eval set instead of the 7-question smoke test",
+    )
+    bench_parser.add_argument(
+        "--synthetic-path",
+        default="eval_data/synthetic_qa_v1.jsonl",
+        help="Path to synthetic QA JSONL (used with --synthetic)",
+    )
 
     stats_parser = subparsers.add_parser("stats", help="Show corpus statistics")
     stats_parser.add_argument("--corpus", default="Data/", help="Corpus directory")
@@ -82,13 +92,18 @@ def main() -> None:
 
     elif args.command == "benchmark":
         logging.basicConfig(level=logging.INFO)
-        from .benchmark import run_benchmark
+        from .benchmark import run_benchmark, run_synthetic_benchmark
         from .rag import GovRAG
 
         print("Initializing Nepal GovAgent...")
         rag = GovRAG(corpus_dir=args.corpus)
-        print("\nRunning benchmark...\n")
-        run_benchmark(rag, verbose=True)
+        if args.synthetic:
+            print("\nRunning SYNTHETIC benchmark (LLM-generated eval)...\n")
+            result = run_synthetic_benchmark(rag, path=args.synthetic_path, verbose=True)
+        else:
+            print("\nRunning smoke-test benchmark (7 hand-curated questions)...\n")
+            result = run_benchmark(rag, verbose=True)
+        print("\n" + result.report())
 
     elif args.command == "stats":
         logging.basicConfig(level=logging.WARNING)

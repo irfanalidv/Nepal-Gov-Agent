@@ -11,14 +11,20 @@ Quick start:
 """
 
 from .agent import GovAgent, GovAgentResult
-from .benchmark import BenchmarkResult, NEPAL_GOV_QA, run_benchmark
+from .benchmark import (
+    BenchmarkResult,
+    NEPAL_GOV_QA,
+    run_benchmark,
+    run_synthetic_benchmark,
+)
 from .config import GovRAGConfig
 from .corpus import download_corpus
+from .eval import SyntheticQAPair, generate_synthetic_qa, load_synthetic_qa
 from .llm_ollama import OllamaClient
 from .preprocess import NEPALI_QUESTION_SUFFIXES, preprocess_query
 from .rag import GovRAG, GovRAGResult
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "GovRAG",
@@ -31,6 +37,11 @@ __all__ = [
     "NEPALI_QUESTION_SUFFIXES",
     "download_corpus",
     "run_benchmark",
+    "run_synthetic_benchmark",
     "NEPAL_GOV_QA",
     "BenchmarkResult",
+    # Synthetic eval
+    "SyntheticQAPair",
+    "generate_synthetic_qa",
+    "load_synthetic_qa",
 ]

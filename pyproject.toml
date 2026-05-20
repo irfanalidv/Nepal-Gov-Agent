@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nepal-gov-agent"
-version = "0.3.0"
-description = "Agentic AI framework for Nepal government service automation — offline-capable, Nepali-language aware, with RAG and MLOps infra built in."
+version = "0.4.0"
+description = "Reference implementation: agentic RAG on Nepal government policy and legal documents. Offline-capable, Nepali + English, hybrid retrieval with citations."
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
@@ -42,6 +42,10 @@ mistral = [
     "mistralai>=1.9.0",
     "python-dotenv>=1.0.1",
 ]
+# Synthetic eval generation — needs OpenAI client.
+eval = ["openai>=1.40.0", "python-dotenv>=1.0.1"]
+# Gradio demo (nepalgov.datacortex.in).
+demo = ["gradio>=4.40.0"]
 
 [project.scripts]
 nepal-gov-agent = "nepal_gov_agent.cli:main"

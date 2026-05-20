@@ -1,13 +1,24 @@
 # Nepal GovAgent
 
-> Open-source agentic AI framework for Nepal's government service layer — RAG, multi-step task automation, and MLOps infra designed for offline deployment and Nepali language workflows.
+> Reference RAG implementation over Nepal's policy and legal document corpus. Hybrid retrieval (BM25 + multilingual embeddings) with inline citations, agentic workflows, and offline-capable defaults. Built on [RAGNav](https://pypi.org/project/ragnav/), [ragfallback](https://pypi.org/project/ragfallback/), and [AgentEnsemble](https://pypi.org/project/agentensemble/).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://img.shields.io/pypi/v/nepal-gov-agent.svg)](https://pypi.org/project/nepal-gov-agent/)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/nepal-gov-agent?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/nepal-gov-agent)
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/status-active%20development-orange.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main)
+[![Status](https://img.shields.io/badge/status-maintenance-blue.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent#status)
+[![Demo](https://img.shields.io/badge/demo-nepalgov.datacortex.in-indigo.svg)](https://nepalgov.datacortex.in)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/irfanalidv/Nepal-Gov-Agent/blob/main/examples/Nepal_GovAgent_Demo.ipynb)
+
+**Live demo:** [nepalgov.datacortex.in](https://nepalgov.datacortex.in) — try it against the seed corpus without installing anything.
+
+---
+
+## Status
+
+**Maintenance.** This is a published reference implementation, not an actively roadmapped product. The goal of the project is to demonstrate end-to-end RAG against a real sovereign-AI corpus (Nepal's National AI Policy, Constitution, Digital Nepal Framework, etc.) using the author's open-source stack. PRs and issues are welcome; new feature work is on a best-effort basis.
+
+If you want a production deployment with native-speaker NLP, real human-validated evaluation, and SLA support, that is consulting work — reach out via [datacortex.in](https://datacortex.in).
 
 ---
 
@@ -15,18 +26,9 @@
 
 Nepal has a digital government layer. The [Nagarik App](https://nagarikapp.gov.np/) has 1.5M+ registered citizens. Diyo AI has deployed Nepali-language chatbots for Lalitpur and Butwal municipalities. Paaila Technology has built Nepali NLU and TTS. Fusemachines is training hundreds of AI fellows.
 
-**The conversational layer exists. What doesn't exist is the intelligence layer above it.**
+The conversational layer exists. What is missing is a worked example of a retrieval-and-citation layer over the legal and policy corpus those systems sit on top of — one that runs offline, handles both Nepali and English queries against the same documents, and reports honest confidence and provenance for every answer.
 
-Today, Nepal's government AI systems can answer questions. They cannot:
-
-- Retrieve and cite specific clauses from Nepal's legal and policy corpus with source tracing
-- Run reliably without internet connectivity in areas with poor network coverage
-- Handle Nepali and English queries against the same document corpus
-- Monitor and audit themselves at production scale
-
-Nepal's [National AI Policy 2082](https://aiassociationnepal.org/national-artificial-intelligence-ai-policy-2082/) explicitly identifies **infrastructure, data, and sovereignty** as its foundational pillars. The [AI Association of Nepal (AIAN)](https://aiassociationnepal.org) has framed national AI readiness around four pillars: Data, Infrastructure, Policy, Resources.
-
-This project is the infrastructure answer.
+This project is that worked example. It is not the entire answer to Nepal's [National AI Policy 2082](https://aiassociationnepal.org/national-artificial-intelligence-ai-policy-2082/), but it shows what one piece of the infrastructure could look like, with code you can read, modify, and deploy on a laptop.
 
 ---
 
@@ -304,6 +306,23 @@ English recall@3:   0.833
 
 > **Note:** These numbers measure **retrieval**, not generated answer quality. Recall@3 = 0.857 means the expected keywords appeared in the top 3 retrieved blocks for 6 of 7 queries. Doc hit rate = 1.000 means the expected source PDF appeared in the top‑5 hits for every query (harness normalizes the `pdf:` doc id prefix). See [Benchmark: retrieval not answer quality](#benchmark-retrieval-not-answer-quality) below.
 
+#### Synthetic eval (v0.4.0+)
+
+The 7-question set above is a smoke test. For a larger eval, `nepal_gov_agent.eval` can auto-generate QA pairs from each page of the corpus using OpenAI, validating that expected keywords appear verbatim in the source passage before saving the pair.
+
+```bash
+pip install 'nepal-gov-agent[eval]'
+export OPENAI_API_KEY=sk-...
+
+# Generate ~100-200 pairs across the seed corpus (idempotent)
+python -m nepal_gov_agent.eval.generate --corpus Data/ --max-per-doc 20 --verbose
+
+# Run benchmark against the generated set
+nepal-gov-agent benchmark --corpus Data/ --synthetic
+```
+
+The report header explicitly labels the result as `SYNTHETIC eval — LLM-generated, NOT human-validated`, and ships with a disclaimer block. **These numbers are a regression signal, not ground truth.** Anyone reporting them without the disclaimer is misrepresenting what they are. See [`eval_data/README.md`](eval_data/README.md) for what synthetic eval is, isn't, and what real evaluation would look like.
+
 ---
 
 ### 7. CLI
@@ -324,6 +343,9 @@ nepal-gov-agent ask "AI infrastructure" --k 10
 # Run benchmark (clone → Data/; PyPI seed → ./nepal_gov_data/)
 nepal-gov-agent benchmark --corpus Data/
 nepal-gov-agent benchmark --corpus ./nepal_gov_data/
+
+# Run synthetic benchmark (generate first with python -m nepal_gov_agent.eval.generate)
+nepal-gov-agent benchmark --corpus Data/ --synthetic
 
 # Show corpus stats
 nepal-gov-agent stats
@@ -507,32 +529,26 @@ This is a meaningful signal for infrastructure quality. Answer quality evaluatio
 
 ---
 
-## Roadmap
+## Release history
 
-**Current release:** `0.3.0` on PyPI — **18** tests passing (10 RAG core + 7 agent + 1 preprocess); seed corpus via `download_corpus()` (opt-in, five PDFs).
+**Current release:** `0.4.0` on PyPI — **18** tests passing; seed corpus via `download_corpus()` (opt-in, five PDFs).
 
-### Phase 1 — RAG core ✅
-- [x] `GovRAG` class: hybrid BM25 + vector retrieval over Nepal gov corpus
-- [x] Offline embedding with `sentence-transformers`
-- [x] Adaptive retrieval fallback on low confidence
-- [x] Inline citation support (with external LLM)
-- [x] `nepal-gov-agent ask / benchmark / stats` CLI
-- [x] Nepal-specific benchmark harness (Recall@k, keyword hit rate)
-- [x] Phase 1 test suite (9 tests)
+- **0.4.0** — Polish + honesty pass. Synthetic eval harness with explicit "LLM-generated, not human-validated" labelling at every layer (report header, dataset README, CHANGELOG). Hosted Gradio demo at [nepalgov.datacortex.in](https://nepalgov.datacortex.in). Project reframed as a reference implementation; status set to maintenance.
+- **0.3.0** — Multilingual default embeddings (`multilingual-e5-small`), balanced BM25/vector weights, Nepali query preprocessing, Ollama client for local synthesis.
+- **0.2.0** — `GovAgent` class with `document_qa`, `service_guide`, `corpus_search` workflows via AgentEnsemble pipeline; SQLite session memory.
+- **0.1.x** — `GovRAG` core: hybrid retrieval, adaptive fallback, inline citations, benchmark harness.
 
-### Phase 2 — Agent capabilities (shipped in 0.2.0) ✅
-- [x] `GovAgent` class: `document_qa`, `service_guide`, `corpus_search` via AgentEnsemble pipeline + SQLite sessions
-- [x] `nepal-gov-agent agent` CLI (`--workflow`, `--session`)
-- [x] Phase 2 test suite (7 tests)
-- [ ] Richer workflow templates (permits, licenses, sector-specific guides)
-- [ ] Nagarik App integration layer
-- [ ] Corpus expansion: ministry circulars 2080–2082
+## Future work (community)
 
-### Phase 3 — Production infra
-- [ ] MLOps monitoring dashboard
-- [ ] Audit trail: every agent action logged and explainable
-- [ ] Deployment guide for municipal servers (low-spec hardware)
-- [ ] Bhashini + Bolna integration for voice workflows
+This project is in maintenance. The directions below are open if a contributor wants to pick one up — no committed timeline from the author:
+
+- Native-speaker review of the synthetic eval set; curated human-validated subset.
+- Real Nepali NLP stack (IndicNLP or Stanza) for tokenization and transliteration handling, replacing the current minimal suffix-stripping.
+- Corpus expansion to ministry circulars 2080–2082 and a structured index over amendments.
+- Voice workflow integration (Bhashini / Bolna) for Nepali-language phone interfaces.
+- Multi-hop reasoning across documents (e.g. "which articles of the Constitution conflict with this draft ordinance?").
+
+Open an issue before starting on anything large so we can coordinate scope.
 
 ---
 
