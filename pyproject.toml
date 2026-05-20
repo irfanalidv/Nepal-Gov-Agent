@@ -60,3 +60,7 @@ include = ["nepal_gov_agent*"]
 
 [tool.setuptools.package-data]
 nepal_gov_agent = ["py.typed"]
+
+# Shipped beside the package so `benchmark --synthetic` works after pip install.
+[tool.setuptools.data-files]
+eval_data = ["eval_data/README.md", "eval_data/synthetic_qa_v1.jsonl"]
