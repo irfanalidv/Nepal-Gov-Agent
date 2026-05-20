@@ -7,10 +7,7 @@
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/nepal-gov-agent?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/nepal-gov-agent)
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![Status](https://img.shields.io/badge/status-maintenance-blue.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent#status)
-[![Demo](https://img.shields.io/badge/demo-nepalgov.datacortex.in-indigo.svg)](https://nepalgov.datacortex.in)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/irfanalidv/Nepal-Gov-Agent/blob/main/examples/Nepal_GovAgent_Demo.ipynb)
-
-**Live demo:** [nepalgov.datacortex.in](https://nepalgov.datacortex.in) — try it against the seed corpus without installing anything.
 
 ---
 
@@ -530,7 +527,9 @@ This is a meaningful signal for infrastructure quality. Answer quality evaluatio
 
 **Current release:** `0.4.1` on PyPI — **18** tests passing; seed corpus via `download_corpus()` (opt-in, five PDFs).
 
-- **0.4.0** — Polish + honesty pass. Synthetic eval harness with explicit "LLM-generated, not human-validated" labelling at every layer (report header, dataset README, CHANGELOG). Hosted Gradio demo at [nepalgov.datacortex.in](https://nepalgov.datacortex.in). Project reframed as a reference implementation; status set to maintenance.
+- **0.4.0** — Polish + honesty pass. Synthetic eval harness with explicit "LLM-generated, not human-validated" labelling at every layer (report header, dataset README, CHANGELOG). Hosted demo at `nepalgov.datacortex.in` (since retired — see note below). Project reframed as a reference implementation; status set to maintenance.
+
+> *Note on the hosted demo:* `nepalgov.datacortex.in` was deployed briefly on Render but retired shortly after. The demo runs cleanly locally (`pip install -e ".[web]" && python web/app.py`); the production deploy hit a SQLite thread-affinity issue in the RAGNav cache layer that requires more work than this maintenance-mode project warrants. The repo and PyPI package are the canonical artifacts.
 - **0.3.0** — Multilingual default embeddings (`multilingual-e5-small`), balanced BM25/vector weights, Nepali query preprocessing, Ollama client for local synthesis.
 - **0.2.0** — `GovAgent` class with `document_qa`, `service_guide`, `corpus_search` workflows via AgentEnsemble pipeline; SQLite session memory.
 - **0.1.x** — `GovRAG` core: hybrid retrieval, adaptive fallback, inline citations, benchmark harness.
