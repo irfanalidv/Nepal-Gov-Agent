@@ -1,0 +1,38 @@
+# Render Blueprint — nepalgov.datacortex.in
+# Push this file to the repo root; on Render, "New +" → "Blueprint" → connect repo
+# → it auto-creates the service from this spec.
+#
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: nepalgov
+    runtime: python
+    plan: free
+    region: oregon          # change if you want EU/Singapore latency
+    branch: main
+    autoDeploy: true
+
+    # Sentence-transformers + multilingual-e5-small + RAGNav index = ~600MB RAM
+    # The free instance is 512MB. We accept that the first cold start may OOM
+    # once or twice while caches build; once cached on disk it stabilizes.
+    # If OOM is persistent, upgrade to Starter (512MB → 2GB).
+    healthCheckPath: /api/health
+
+    buildCommand: pip install --upgrade pip && pip install -e ".[web]"
+
+    # Important: do NOT use `python -m web.app` — we use direct script form so
+    # we don't depend on web/__init__.py existing.
+    startCommand: python web/app.py
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: HF_HOME
+        value: /opt/render/project/.cache/huggingface
+      - key: TRANSFORMERS_CACHE
+        value: /opt/render/project/.cache/huggingface
+      - key: NGA_CACHE_DIR
+        value: /opt/render/project/.cache/nga
+      - key: GRADIO_ANALYTICS_ENABLED
+        value: "False"
+      # Render injects PORT automatically; web/app.py reads it.
