@@ -187,7 +187,7 @@ def main() -> None:
     port = int(os.environ.get("PORT", "8000"))
     host = os.environ.get("HOST", "0.0.0.0")
     uvicorn.run(
-        "web.app:app",
+        app,
         host=host,
         port=port,
         log_level="info",

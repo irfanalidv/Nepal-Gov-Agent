@@ -71,7 +71,7 @@
 
   async function ask(query) {
     hideAnswer();
-    showStatus('Retrieving sources…');
+    showStatus('स्रोत खोज्दै… · Retrieving sources…');
     setBusy(true);
 
     const t0 = performance.now();
@@ -94,7 +94,18 @@
 
       const data = await res.json();
       hideStatus();
-      body.textContent = data.answer || '(no answer assembled)';
+      const text = data.answer || '(no answer assembled)';
+      body.textContent = '';
+      text.split(/\n{2,}/).forEach((para) => {
+        const p = document.createElement('p');
+        p.textContent = para.trim();
+        if (p.textContent) body.appendChild(p);
+      });
+      if (!body.childNodes.length) {
+        const p = document.createElement('p');
+        p.textContent = text.trim();
+        body.appendChild(p);
+      }
       setConfidence(data.confidence);
       elapsed.textContent = `${data.elapsed_ms} ms`;
       renderSources(data.sources);
@@ -115,8 +126,8 @@
 
   async function warmThenRetry(query) {
     showStatus(
-      'Starting the service. The free tier sleeps after inactivity — first ' +
-      'request takes about 30 seconds while the embedding model loads.',
+      'सेवा सुरु हुँदैछ — पहिलो अनुरोधमा ~३० सेकेन्ड लाग्न सक्छ (मोडेल लोड)। ' +
+      'Waking up — first request after idle may take ~30s while embeddings load.',
       'warming'
     );
     // Poll /api/health until ready, then retry once.
@@ -127,7 +138,7 @@
         const r = await fetch('/api/health');
         const j = await r.json();
         if (j.ready) {
-          showStatus('Ready. Retrieving sources…');
+          showStatus('तयार। स्रोत खोज्दै… · Ready. Retrieving…');
           await sleep(400);
           await ask(query);
           return;

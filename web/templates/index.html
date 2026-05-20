@@ -4,64 +4,92 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="light dark" />
-<title>Nepal GovAgent — Reference RAG over Nepal's policy and legal corpus</title>
-<meta name="description" content="A reference implementation of retrieval-augmented generation over Nepal's National AI Policy, Constitution, Digital Nepal Framework, and other policy documents. Open source, offline-capable, with inline citations." />
+<title>Nepal GovAgent — खुला स्रोत RAG · Nepal policy corpus</title>
+<meta name="description" content="Open-source retrieval over Nepal government policy PDFs. Nepali and English queries, inline citations, offline-capable." />
 <meta property="og:title" content="Nepal GovAgent" />
-<meta property="og:description" content="Reference RAG implementation over Nepal's policy and legal corpus." />
+<meta property="og:description" content="Reference RAG over Nepal's policy and legal corpus — built in the open." />
 <meta property="og:type" content="website" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet" />
 
-<link rel="stylesheet" href="/static/style.css" />
+<link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v=3" />
 </head>
-<body>
+<body class="page">
+
+<div class="nepal-strip" aria-hidden="true">
+  <span></span><span></span><span></span>
+</div>
 
 <header class="masthead">
   <div class="container">
     <div class="masthead__top">
       <div class="masthead__id">
-        <span class="seal" aria-hidden="true"></span>
-        <span class="masthead__name">Nepal GovAgent</span>
+        <span class="logo-mark" aria-hidden="true">nga</span>
+        <div>
+          <span class="masthead__name">Nepal GovAgent</span>
+          <span class="masthead__name-ne">नेपाल गभ एजेन्ट</span>
+        </div>
       </div>
-      <nav class="masthead__nav">
-        <a href="https://github.com/irfanalidv/Nepal-Gov-Agent">Source</a>
+      <nav class="masthead__nav" aria-label="Project links">
+        <a href="https://github.com/irfanalidv/Nepal-Gov-Agent">GitHub</a>
         <a href="https://pypi.org/project/nepal-gov-agent/">PyPI</a>
-        <a href="https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/docs/synthetic-eval.md">Writeup</a>
+        <a href="https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/docs/synthetic-eval.md">Eval writeup</a>
       </nav>
     </div>
 
     <div class="masthead__hero">
-      <p class="kicker">A reference implementation · v0.4.0</p>
-      <h1 class="hero__title">
-        Retrieval&#8202;<span class="hero__amp">&amp;</span>&#8202;citation
-        over Nepal&#8217;s policy corpus.
-      </h1>
-      <p class="hero__lede">
-        Hybrid BM25 and multilingual dense retrieval over the National AI Policy,
-        Constitution, Digital Nepal Framework, and other government documents.
-        Open source. Offline&#8209;capable. Every answer carries its source.
+      <p class="kicker">
+        <span class="badge badge--oss">खुला स्रोत</span>
+        <span class="badge">v0.4.0</span>
+        <span class="badge badge--muted">reference impl · maintenance</span>
       </p>
+
+      <h1 class="hero__title">
+        <span class="hero__title-ne">नेपाल सरकारी दस्तावेजमा खोजी र उद्धरण</span>
+        <span class="hero__title-en">Search and cite Nepal&rsquo;s policy corpus</span>
+      </h1>
+
+      <p class="hero__lede">
+        Hybrid BM25 + multilingual embeddings over National AI Policy, Constitution,
+        Digital Nepal Framework, and more. Works offline. Every answer links back to
+        the PDF page it came from — no black-box summariser on this demo.
+      </p>
+
+      <ul class="hero__chips" role="list">
+        <li>🇳🇵 Nepal gov PDFs</li>
+        <li>नेपाली + English</li>
+        <li>RAGNav stack</li>
+        <li>MIT</li>
+      </ul>
+
       <dl class="hero__meta">
-        <div><dt>Status</dt><dd>Maintenance</dd></div>
-        <div><dt>License</dt><dd>MIT</dd></div>
+        <div><dt>स्थिति / Status</dt><dd>Maintenance</dd></div>
+        <div><dt>लाइसेन्स / License</dt><dd>MIT</dd></div>
         <div><dt>Stack</dt><dd>RAGNav · ragfallback · AgentEnsemble</dd></div>
-        <div><dt>Author</dt><dd>Irfan Ali, DataCortex IQ</dd></div>
+        <div><dt>निर्माण / Built by</dt><dd><a href="https://datacortex.in">Irfan Ali</a></dd></div>
       </dl>
     </div>
   </div>
 </header>
 
-<main class="container">
+<main class="container main">
 
-<section class="console" id="console" aria-labelledby="console-heading">
+<section class="panel panel--query console" id="console" aria-labelledby="console-heading">
   <header class="section-head">
-    <span class="section-num">§ 01</span>
-    <h2 id="console-heading" class="section-title">Query the corpus</h2>
+    <span class="section-num">01</span>
+    <div class="section-head__text">
+      <h2 id="console-heading" class="section-title">Query the corpus</h2>
+      <p class="section-sub">दस्तावेज सोध्नुहोस्</p>
+    </div>
   </header>
 
   <div class="console__body">
+    <p class="console__hint">
+      <code>nepal-gov-agent ask</code> — same engine as this form. Try Nepali or English.
+    </p>
+
     <form id="ask-form" autocomplete="off">
       <label class="visually-hidden" for="ask-input">Question</label>
       <div class="ask">
@@ -69,30 +97,33 @@
           id="ask-input"
           name="query"
           rows="2"
-          placeholder="What is the vision of Nepal's National AI Policy?"
+          placeholder="नेपालको राष्ट्रिय AI नीतिको दृष्टिकोण के हो? / What is Nepal's National AI Policy vision?"
           maxlength="500"
           required
         ></textarea>
         <button type="submit" id="ask-btn" class="ask__submit">
-          <span class="ask__submit-label">Ask</span>
-          <span class="ask__submit-key" aria-hidden="true">↵</span>
+          <span class="ask__submit-label">सोध्नुहोस्</span>
+          <span class="ask__submit-sub">Ask</span>
         </button>
       </div>
     </form>
 
+    <p class="examples-label">उदाहरण प्रश्नहरू · Example queries</p>
     <ul class="examples" role="list">
-      <li><button type="button" class="example-btn" data-q="What is the vision of Nepal's National AI Policy?">Vision of the AI Policy</button></li>
-      <li><button type="button" class="example-btn" data-q="What are the four pillars of Nepal's AI readiness?">Four pillars of AI readiness</button></li>
-      <li><button type="button" class="example-btn" data-q="What does the Constitution say about fundamental rights?">Constitutional rights</button></li>
-      <li><button type="button" class="example-btn" data-q="What is Digital Nepal Framework 2.0?">Digital Nepal Framework 2.0</button></li>
-      <li><button type="button" class="example-btn" data-q="नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?">नेपालको AI नीति (नेपाली)</button></li>
+      <li><button type="button" class="example-btn" data-q="What is the vision of Nepal's National AI Policy?">AI Policy vision</button></li>
+      <li><button type="button" class="example-btn" data-q="What are the four pillars of Nepal's AI readiness?">Four pillars</button></li>
+      <li><button type="button" class="example-btn" data-q="What does the Constitution say about fundamental rights?">Fundamental rights</button></li>
+      <li><button type="button" class="example-btn" data-q="What is Digital Nepal Framework 2.0?">Digital Nepal 2.0</button></li>
+      <li><button type="button" class="example-btn" data-q="नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?">नेपाली — AI नीति</button></li>
     </ul>
 
     <div id="status" class="status" hidden></div>
 
     <article id="answer" class="answer" hidden>
       <header class="answer__head">
-        <h3 class="answer__title">Answer</h3>
+        <div>
+          <h3 class="answer__title">उत्तर · Answer</h3>
+        </div>
         <div class="answer__meta">
           <span class="confidence" id="confidence"></span>
           <span class="elapsed" id="elapsed"></span>
@@ -101,107 +132,107 @@
       <div class="answer__body" id="answer-body"></div>
 
       <header class="answer__head answer__head--sources">
-        <h3 class="answer__title">Sources</h3>
-        <p class="answer__sub">Every citation is a real page in a real PDF. Click to open.</p>
+        <h3 class="answer__title">स्रोत · Sources</h3>
+        <p class="answer__sub">प्रत्येक उद्धरण वास्तविक PDF पृष्ठबाट — Each citation is a real page.</p>
       </header>
       <ol id="sources" class="sources" role="list"></ol>
     </article>
   </div>
 </section>
 
-<section class="about" aria-labelledby="about-heading">
+<section class="panel about" aria-labelledby="about-heading">
   <header class="section-head">
-    <span class="section-num">§ 02</span>
-    <h2 id="about-heading" class="section-title">What this is</h2>
+    <span class="section-num">02</span>
+    <div class="section-head__text">
+      <h2 id="about-heading" class="section-title">What this is</h2>
+      <p class="section-sub">यो के हो</p>
+    </div>
   </header>
 
   <div class="prose">
     <p>
-      Nepal GovAgent is a worked example of retrieval-augmented generation
-      against a sovereign policy corpus. It uses hybrid lexical and dense
-      retrieval, returns citations down to the page and excerpt level, and
-      runs entirely offline once the documents are indexed. There is no
-      OpenAI key in the loop, no proprietary embedding API, no telemetry.
+      This is a <strong>maintainer-built reference project</strong> — the kind Nepali
+      developers ship on GitHub and PyPI when they want to show sovereign-AI RAG done
+      carefully: hybrid retrieval, citations to the page, honest eval disclaimers,
+      no vendor lock-in for embeddings.
     </p>
     <p>
-      The project is published as a reference implementation, not as a
-      product. The code is intentionally small, readable, and clearly
-      attributed to its constituent open-source libraries
-      (<a href="https://pypi.org/project/ragnav/">RAGNav</a>,
-      <a href="https://pypi.org/project/ragfallback/">ragfallback</a>,
-      <a href="https://pypi.org/project/agentensemble/">AgentEnsemble</a>).
-      A v0.4.0 synthetic evaluation harness ships in the package; the first
-      run surfaces a meaningful gap between English and Nepali retrieval
-      that is documented honestly in the
-      <a href="https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/docs/synthetic-eval.md">accompanying writeup</a>.
+      It is not Nagarik App, not an official .gov.np product, and not a startup pitch.
+      The code is small on purpose so you can read it, fork it, and wire your own corpus.
+      Built on
+      <a href="https://pypi.org/project/ragnav/">RAGNav</a>,
+      <a href="https://pypi.org/project/ragfallback/">ragfallback</a>, and
+      <a href="https://pypi.org/project/agentensemble/">AgentEnsemble</a>.
     </p>
     <p>
-      The demo above runs against a five-PDF seed set: National AI Policy,
-      Constitution of Nepal (2nd amendment, English), Digital Nepal
-      Framework, Human Rights Award Fund rules, and the 2082 election
-      ordinance. The answer text on this page is assembled from retrieved
-      passages with no language-model rewriting in between — what you see
-      is exactly what the retriever returned.
+      The demo indexes six PDFs from the public repo <code>Data/</code> folder (AI Policy,
+      Constitution, DNF, election ordinance, human rights rules, legal maxims).
+      Answers here are retrieved passages only — what you see is what the index returned.
     </p>
   </div>
 </section>
 
-<section class="corpus" aria-labelledby="corpus-heading">
+<section class="panel corpus" aria-labelledby="corpus-heading">
   <header class="section-head">
-    <span class="section-num">§ 03</span>
-    <h2 id="corpus-heading" class="section-title">Corpus &amp; numbers</h2>
+    <span class="section-num">03</span>
+    <div class="section-head__text">
+      <h2 id="corpus-heading" class="section-title">Corpus &amp; numbers</h2>
+      <p class="section-sub">डाटा र तथ्याङ्क</p>
+    </div>
   </header>
 
   <dl class="stats" id="stats">
-    <div class="stat"><dt>Documents</dt><dd id="stat-docs">—</dd></div>
-    <div class="stat"><dt>Indexed blocks</dt><dd id="stat-blocks">—</dd></div>
-    <div class="stat"><dt>Embedding</dt><dd>multilingual&#8209;e5&#8209;small</dd></div>
-    <div class="stat"><dt>Mode</dt><dd id="stat-offline">offline</dd></div>
+    <div class="stat"><dt>कागजात / Documents</dt><dd id="stat-docs">—</dd></div>
+    <div class="stat"><dt>ब्लकहरू / Blocks</dt><dd id="stat-blocks">—</dd></div>
+    <div class="stat"><dt>Embedding</dt><dd>multilingual-e5-small</dd></div>
+    <div class="stat"><dt>मोड / Mode</dt><dd id="stat-offline">offline</dd></div>
   </dl>
 
   <p class="footnote">
-    Evaluation numbers are deliberately kept off this page. They live with their
-    disclaimer in the
+    मूल्याङ्कन संख्या यहाँ छैन — Eval numbers stay in the
     <a href="https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/docs/synthetic-eval.md">synthetic-eval writeup</a>
-    where they can be read in context. A figure without a disclaimer travels too far.
+    with their disclaimer. अंक बिना सन्दर्भ टाढा जान्छन्।
   </p>
 </section>
 
-<section class="install" aria-labelledby="install-heading">
+<section class="panel panel--install install" aria-labelledby="install-heading">
   <header class="section-head">
-    <span class="section-num">§ 04</span>
-    <h2 id="install-heading" class="section-title">Use it</h2>
+    <span class="section-num">04</span>
+    <div class="section-head__text">
+      <h2 id="install-heading" class="section-title">Use it yourself</h2>
+      <p class="section-sub">आफै प्रयोग गर्नुहोस्</p>
+    </div>
   </header>
 
-  <pre class="codeblock" aria-label="Installation command"><code>pip install nepal-gov-agent</code></pre>
+  <pre class="codeblock" aria-label="Install"><code>$ pip install nepal-gov-agent</code></pre>
 
   <pre class="codeblock" aria-label="Python example"><code>from nepal_gov_agent import GovRAG, download_corpus
 
 corpus = download_corpus("./nepal_gov_data/")
 rag = GovRAG(corpus_dir=corpus)
 
-result = rag.ask("What is Nepal's National AI Policy vision?")
+result = rag.ask("नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?")
 print(result.answer)
-for source in result.sources:
-    print(f"  {source['doc']} — page {source['page']}")</code></pre>
+for src in result.sources:
+    print(src["doc"], "p.", src["page"])</code></pre>
 </section>
 
 </main>
 
 <footer class="footer">
   <div class="container footer__inner">
+    <p class="footer__prompt" aria-hidden="true">$ nepal-gov-agent --status maintenance</p>
     <p class="footer__cite">
-      Built by <a href="https://datacortex.in">Irfan Ali</a> ·
-      <a href="https://github.com/irfanalidv/Nepal-Gov-Agent">github.com/irfanalidv/Nepal-Gov-Agent</a> ·
-      MIT licensed
+      <a href="https://datacortex.in">Irfan Ali</a> · DataCortex IQ ·
+      <a href="https://github.com/irfanalidv/Nepal-Gov-Agent">GitHub</a> · MIT
     </p>
     <p class="footer__note">
-      Not affiliated with the Government of Nepal. This is an independent
-      reference implementation over publicly available policy documents.
+      स्वतन्त्र खुला स्रोत परियोजना — Independent open-source work.
+      Not affiliated with the Government of Nepal.
     </p>
   </div>
 </footer>
 
-<script src="/static/app.js"></script>
+<script src="{{ url_for('static', path='app.js') }}?v=3"></script>
 </body>
 </html>
