@@ -2,17 +2,20 @@
 FastAPI backend for nepalgov.datacortex.in.
 
 Serves the static frontend and exposes /api endpoints that the JS calls.
-Loads RAG once at startup; survives the embedding model cold start with
-a simple readiness probe.
+Boots the RAG corpus in a background thread so the HTTP port opens
+immediately — Render's port scanner needs to see a listening port within
+~10 minutes, and indexing the corpus can take longer on free-tier CPU.
+
+The frontend's /api/health poller handles the warming state.
 
 Local:
-    pip install -e ".[demo]" fastapi uvicorn
-    python -m web.app
+    pip install -e ".[web]"
+    python web/app.py
     # → http://127.0.0.1:8000
 
 Render:
-    Build:  pip install -e ".[demo]" fastapi uvicorn[standard]
-    Start:  python -m web.app
+    Build:  pip install -e ".[web]"
+    Start:  python web/app.py
     Port comes from $PORT.
 """
 
@@ -20,40 +23,45 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+from starlette.requests import Request
 
 logger = logging.getLogger(__name__)
 
 # Module-level state. Render workers are single-process so this is fine.
 _state: dict[str, Any] = {"rag": None, "agent": None, "ready": False, "error": None}
+_boot_lock = threading.Lock()
+_boot_started = False
 
 
 # ---------------------------------------------------------------------------
-# Startup: load RAG once
+# Boot: runs in a background thread so HTTP port opens immediately
 # ---------------------------------------------------------------------------
 
 def _boot() -> None:
-    """Build the RAG index. ~30s cold start on Render free tier."""
+    """Build the RAG index. Can take 60-120s on Render free-tier CPU."""
     t0 = time.time()
     try:
         from nepal_gov_agent import GovAgent, GovRAG, GovRAGConfig, download_corpus
 
         corpus_dir = os.environ.get("NGA_CORPUS_DIR", "").strip()
         if not corpus_dir:
+            logger.info("Downloading seed corpus...")
             corpus_dir = download_corpus(dest_dir="./nepal_gov_data/")
 
         cache_dir = os.environ.get("NGA_CACHE_DIR", ".nepal_gov_cache")
         config = GovRAGConfig(cache_dir=cache_dir)
+        logger.info("Building RAG index from %s...", corpus_dir)
         rag = GovRAG(corpus_dir=corpus_dir, config=config)
         agent = GovAgent(rag=rag, session_id="web")
 
@@ -66,10 +74,16 @@ def _boot() -> None:
         logger.exception("Boot failed")
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    _boot()
-    yield
+def _kick_boot_once() -> None:
+    """Start _boot() in a background thread, only once per process."""
+    global _boot_started
+    with _boot_lock:
+        if _boot_started:
+            return
+        _boot_started = True
+    t = threading.Thread(target=_boot, name="nga-boot", daemon=True)
+    t.start()
+    logger.info("Boot thread started; HTTP server is ready to accept traffic.")
 
 
 # ---------------------------------------------------------------------------
@@ -79,10 +93,16 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(
     title="Nepal GovAgent",
     description="Reference RAG implementation over Nepal's policy and legal corpus.",
-    lifespan=lifespan,
     docs_url=None,  # hide swagger; this isn't a public API
     redoc_url=None,
 )
+
+
+@app.on_event("startup")
+async def _on_startup() -> None:
+    # Critical: do NOT block here. Render's port scanner needs to see the
+    # HTTP port open within ~10 minutes. The corpus build runs in a thread.
+    _kick_boot_once()
 
 WEB_DIR = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
