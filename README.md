@@ -48,13 +48,13 @@ pip install nepal-gov-agent[ollama]    # Local Ollama
 
 ## Quick start
 
-PDFs are **not** bundled on PyPI. Fetch the seed set with `download_corpus()` (writes `./nepal_gov_data/`), or clone this repo and point `corpus_dir` at `Data/` for all **six** PDFs including Legal Maxims.
+PDFs are **not** bundled on PyPI or in git. Fetch the seed set with `download_corpus()` (writes `./nepal_gov_data/`). Add your own PDFs to that folder or any path you pass to `GovRAG`.
 
 ```python
 from nepal_gov_agent import GovRAG, GovRAGConfig, download_corpus
 
 config = GovRAGConfig()  # offline by default; tune via GovRAGConfig fields
-corpus_dir = download_corpus()  # or "Data/" if you cloned the repo
+corpus_dir = download_corpus()
 rag = GovRAG(corpus_dir=corpus_dir, config=config)
 result = rag.ask("What is the vision of Nepal's National AI Policy?")
 
@@ -95,7 +95,7 @@ from nepal_gov_agent import GovRAG, GovAgent, download_corpus
 
 logging.basicConfig(level=logging.INFO)
 
-corpus_dir = download_corpus()  # or "Data/" if you cloned the repo
+corpus_dir = download_corpus()
 rag = GovRAG(corpus_dir=corpus_dir)
 agent = GovAgent(rag=rag, session_id="demo")
 
@@ -125,14 +125,14 @@ Examples: `examples/agent_workflow.py`, `examples/service_guide.py`.
 
 ## Use cases
 
-Examples below use `corpus_dir="Data/"` after **cloning** the repository. If you installed from **PyPI** only, run `corpus_dir = download_corpus()` once and pass that path instead.
+Examples below assume you have run `corpus_dir = download_corpus()` once (→ `./nepal_gov_data/`).
 
 ### 1. Query the Nepal AI Policy (English)
 
 ```python
 from nepal_gov_agent import GovRAG, download_corpus
 
-corpus_dir = download_corpus()  # or "Data/" if you cloned the repo
+corpus_dir = download_corpus()
 rag = GovRAG(corpus_dir=corpus_dir)
 
 result = rag.ask("What is the role of the National AI Centre?")
@@ -248,7 +248,7 @@ from nepal_gov_agent import GovRAG, download_corpus
 
 os.environ["MISTRAL_API_KEY"] = "your_key_here"  # or load from .env
 
-corpus_dir = download_corpus()  # or "Data/" if you cloned the repo
+corpus_dir = download_corpus()
 rag = GovRAG(corpus_dir=corpus_dir)
 llm = MistralClient()
 
@@ -275,12 +275,12 @@ AI curricula from school to university level [[pdf:National AI Policy-Final_uxc9
 ```python
 from nepal_gov_agent import GovRAG, run_benchmark
 
-rag = GovRAG(corpus_dir="Data/")
+rag = GovRAG(corpus_dir="./nepal_gov_data/")
 results = run_benchmark(rag, verbose=True)
 print(results.report())
 ```
 
-**Real output** (from the full local `Data/` folder, six PDFs; the opt-in `download_corpus()` seed has five — run `run_benchmark(rag)` on your `corpus_dir` for live numbers):
+**Real output** (from a local corpus with five seed PDFs via `download_corpus()` — run `run_benchmark(rag)` on your `corpus_dir` for live numbers):
 ```
   ✓ [english] What is the vision of Nepal's National AI Policy?...
   ✓ [english] What are the four pillars of Nepal's AI readiness?...
@@ -315,10 +315,10 @@ pip install 'nepal-gov-agent[eval]'
 export OPENAI_API_KEY=sk-...
 
 # Generate ~100-200 pairs across the seed corpus (idempotent)
-python -m nepal_gov_agent.eval.generate --corpus Data/ --max-per-doc 20 --verbose
+python -m nepal_gov_agent.eval.generate --corpus ./nepal_gov_data/ --max-per-doc 20 --verbose
 
 # Run benchmark against the generated set
-nepal-gov-agent benchmark --corpus Data/ --synthetic
+nepal-gov-agent benchmark --corpus ./nepal_gov_data/ --synthetic
 ```
 
 The report header explicitly labels the result as `SYNTHETIC eval — LLM-generated, NOT human-validated`, and ships with a disclaimer block. **These numbers are a regression signal, not ground truth.** Anyone reporting them without the disclaimer is misrepresenting what they are. See [`eval_data/README.md`](eval_data/README.md) for what synthetic eval is, isn't, and what real evaluation would look like.
@@ -340,12 +340,12 @@ nepal-gov-agent ask "What are fundamental rights?" --corpus /path/to/docs/
 # Retrieve more blocks
 nepal-gov-agent ask "AI infrastructure" --k 10
 
-# Run benchmark (clone → Data/; PyPI seed → ./nepal_gov_data/)
-nepal-gov-agent benchmark --corpus Data/
+# Run benchmark (after download_corpus() → ./nepal_gov_data/)
+nepal-gov-agent benchmark --corpus ./nepal_gov_data/
 nepal-gov-agent benchmark --corpus ./nepal_gov_data/
 
 # Run synthetic benchmark (generate first with python -m nepal_gov_agent.eval.generate)
-nepal-gov-agent benchmark --corpus Data/ --synthetic
+nepal-gov-agent benchmark --corpus ./nepal_gov_data/ --synthetic
 
 # Show corpus stats
 nepal-gov-agent stats
@@ -389,7 +389,7 @@ from nepal_gov_agent import GovRAG
 
 logging.basicConfig(level=logging.WARNING)
 
-rag = GovRAG(corpus_dir="Data/")
+rag = GovRAG(corpus_dir="./nepal_gov_data/")
 print(rag.stats)
 ```
 
@@ -398,7 +398,7 @@ print(rag.stats)
 {
     "documents": 6,
     "blocks": 856,
-    "corpus_dir": "Data/",
+    "corpus_dir": "./nepal_gov_data/",
     "offline": True
 }
 ```
@@ -419,7 +419,7 @@ config = GovRAGConfig(
     embedding_model="intfloat/multilingual-e5-small",
 )
 
-rag = GovRAG(corpus_dir="Data/", config=config)
+rag = GovRAG(corpus_dir="./nepal_gov_data/", config=config)
 result = rag.ask("What is the Digital Nepal Framework?")
 ```
 
@@ -427,9 +427,9 @@ result = rag.ask("What is the Digital Nepal Framework?")
 
 ## Corpus
 
-### Repository `Data/` on GitHub (6 PDFs)
+### Seed corpus (`download_corpus()`)
 
-The GitHub repo ships six Nepal government PDFs under `Data/`:
+The wheel and git repo do **not** bundle PDFs. `download_corpus()` pulls **five** public policy/gazette files into `./nepal_gov_data/`:
 
 | Document | Language |
 |---|---|
@@ -438,11 +438,8 @@ The GitHub repo ships six Nepal government PDFs under `Data/`:
 | Digital Nepal Framework 2.0 | English |
 | प्रतिनिधि सभा सदस्य निर्वाचन अध्यादेश २०८२ | Nepali |
 | मानव अधिकार पुरस्कार कोष सञ्चालन नियमावली २०७५ | Nepali |
-| Legal Maxims (Latin/English/Nepali) — Nepal Law Commission | Nepali/English |
 
-### Opt-in seed download (`download_corpus()`)
-
-The wheel does **not** bundle PDFs. `download_corpus()` pulls **five** of the files above into `./nepal_gov_data/` — it **omits** *Legal Maxims* (`1714977234_32.pdf`) because that reference volume is very large and often dominates hybrid retrieval over shorter Nepali ordinances. Clone the repo or copy the sixth PDF into your folder when you want the full six-document corpus locally.
+It **omits** *Legal Maxims* (`1714977234_32.pdf`) because that reference volume is very large and often dominates hybrid retrieval over shorter Nepali ordinances. Add that file yourself if you need it for local experiments.
 
 ```python
 from nepal_gov_agent import download_corpus, GovRAG
@@ -461,7 +458,7 @@ rag = GovRAG(corpus_dir="./my_ministry_docs/")
 
 No extra configuration. Put PDFs in a single folder (not subfolders) and pass that path as `corpus_dir`.
 
-**Contributing:** If you have publicly available Nepal government PDFs, open a PR adding them to `Data/` — expanding the corpus is the highest-priority contribution this project needs.
+**Contributing:** If you have publicly available Nepal government PDFs, open an issue with links or a PR describing sources — expanding the corpus is the highest-priority contribution this project needs.
 
 ---
 
@@ -573,7 +570,7 @@ This project establishes the retrieval foundation layer. The trust, oversight, a
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-**Highest priority:** Nepal government document corpus. If you have publicly available PDFs — ministry circulars, SOPs, municipality guidelines — open an issue or PR adding them to `Data/`.
+**Highest priority:** Nepal government document corpus. If you have publicly available PDFs — ministry circulars, SOPs, municipality guidelines — open an issue with links or sources.
 
 ---
 

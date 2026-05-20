@@ -14,10 +14,9 @@ from urllib.parse import quote
 
 import requests
 
-# Seed corpus — policy/gazette PDFs from github.com/irfanalidv/Nepal-Gov-Agent/tree/main/Data/
+# Seed corpus — five policy/gazette PDFs (not stored on main; pinned release for download).
 # Omits 1714977234_32.pdf (Nepal Law Commission *Legal Maxims* — ~500+ blocks) so it does not
 # drown smaller Nepali ordinance PDFs in hybrid retrieval for demos and Colab.
-# Full ``Data/`` in the git repo may still include that volume for local experiments.
 SEED_CORPUS: list[str] = [
     "2082.9.2 प्रतिनिधि सभा सदस्य निर्वाचन (पहिलो संशोधन) अध्यादेश,२०८२_v1cs5ms.pdf",
     "Constitution of Nepal (2nd amd. English)_xf33zb3.pdf",
@@ -26,8 +25,9 @@ SEED_CORPUS: list[str] = [
     "मानव अधिकार पुरस्कार कोष सञ्चालन नियमावली, 2075_n4hme7v.pdf",
 ]
 
+# Pinned tag — PDFs removed from main branch; seed files remain on this release tree.
 RAW_BASE_URL = (
-    "https://raw.githubusercontent.com/irfanalidv/Nepal-Gov-Agent/main/Data/"
+    "https://raw.githubusercontent.com/irfanalidv/Nepal-Gov-Agent/v0.4.0/Data/"
 )
 
 
@@ -35,7 +35,7 @@ def download_corpus(dest_dir: str = "./nepal_gov_data/", force: bool = False) ->
     """
     Download the Nepal GovAgent seed corpus to a local folder.
 
-    Pulls five policy/gazette PDFs from ``Data/`` on GitHub (National AI Policy,
+    Pulls five policy/gazette PDFs from the pinned release tree (National AI Policy,
     Constitution, Digital Nepal Framework, election ordinance, human rights fund
     rules). Nothing is written until you call this.
 
