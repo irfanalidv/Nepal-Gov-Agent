@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import threading
 from typing import Any
 
 import gradio as gr
@@ -52,6 +53,21 @@ def _boot() -> tuple[GovRAG, GovAgent]:
     agent = GovAgent(rag=rag, session_id="demo")
     logger.info("Boot complete: %s", rag.stats)
     return rag, agent
+
+
+# Gradio's queue runs handlers on worker threads; RAGNav's SQLite cache is
+# bound to the thread that created it. Lazy-init per thread avoids
+# "SQLite objects created in a thread can only be used in that same thread".
+_worker = threading.local()
+
+
+def _get_rag_agent() -> tuple[GovRAG, GovAgent]:
+    rag = getattr(_worker, "rag", None)
+    if rag is None:
+        rag, agent = _boot()
+        _worker.rag = rag
+        _worker.agent = agent
+    return _worker.rag, _worker.agent
 
 
 # ---------------------------------------------------------------------------
@@ -83,10 +99,11 @@ def _format_sources_md(sources: list[dict[str, Any]]) -> str:
     return "\n\n---\n\n".join(lines)
 
 
-def handle_ask(query: str, rag: GovRAG) -> tuple[str, str, str]:
+def handle_ask(query: str) -> tuple[str, str, str]:
     query = (query or "").strip()
     if not query:
         return "Please enter a question.", "", "—"
+    rag, _ = _get_rag_agent()
     try:
         result = rag.ask(query)
     except Exception as e:
@@ -97,10 +114,11 @@ def handle_ask(query: str, rag: GovRAG) -> tuple[str, str, str]:
     return result.answer, sources_md, badge
 
 
-def handle_service_guide(query: str, agent: GovAgent) -> tuple[str, str, str]:
+def handle_service_guide(query: str) -> tuple[str, str, str]:
     query = (query or "").strip()
     if not query:
         return "Please enter a service question.", "", "—"
+    _, agent = _get_rag_agent()
     try:
         result = agent.run(query, workflow="service_guide")
     except Exception as e:
@@ -110,10 +128,11 @@ def handle_service_guide(query: str, agent: GovAgent) -> tuple[str, str, str]:
     return result.answer, _format_sources_md(result.sources), badge
 
 
-def handle_search(query: str, k: int, rag: GovRAG) -> str:
+def handle_search(query: str, k: int) -> str:
     query = (query or "").strip()
     if not query:
         return "Please enter a search query."
+    rag, _ = _get_rag_agent()
     try:
         blocks = rag.search(query, k=k)
     except Exception as e:
@@ -172,7 +191,7 @@ _EXAMPLES_SERVICE = [
 ]
 
 
-def build_ui(rag: GovRAG, agent: GovAgent) -> gr.Blocks:
+def build_ui() -> gr.Blocks:
     with gr.Blocks(
         title="Nepal GovAgent — Demo",
         theme=gr.themes.Soft(primary_hue="indigo", neutral_hue="slate"),
@@ -194,11 +213,7 @@ def build_ui(rag: GovRAG, agent: GovAgent) -> gr.Blocks:
                 a1 = gr.Markdown(label="Answer")
                 s1 = gr.Markdown(label="Sources")
                 gr.Examples(_EXAMPLES_ASK, inputs=q1)
-                btn1.click(
-                    fn=lambda q: handle_ask(q, rag),
-                    inputs=[q1],
-                    outputs=[a1, s1, badge1],
-                )
+                btn1.click(fn=handle_ask, inputs=[q1], outputs=[a1, s1, badge1])
 
             # ---------------- Tab 2: Service Guide
             with gr.Tab("Service Guide"):
@@ -218,7 +233,7 @@ def build_ui(rag: GovRAG, agent: GovAgent) -> gr.Blocks:
                 s2 = gr.Markdown(label="Sources")
                 gr.Examples(_EXAMPLES_SERVICE, inputs=q2)
                 btn2.click(
-                    fn=lambda q: handle_service_guide(q, agent),
+                    fn=handle_service_guide,
                     inputs=[q2],
                     outputs=[a2, s2, badge2],
                 )
@@ -238,16 +253,14 @@ def build_ui(rag: GovRAG, agent: GovAgent) -> gr.Blocks:
                 btn3 = gr.Button("Search", variant="primary")
                 a3 = gr.Markdown(label="Blocks")
                 btn3.click(
-                    fn=lambda q, k: handle_search(q, int(k), rag),
+                    fn=lambda q, k: handle_search(q, int(k)),
                     inputs=[q3, k3],
                     outputs=[a3],
                 )
 
-        # Stats footer
-        s = rag.stats
         gr.Markdown(
-            f"---\n_{s['blocks']:,} blocks indexed across {s['documents']} documents._"
-            f" Offline: {s['offline']}."
+            "---\n_Index builds on first question (~30s, cached after that). "
+            "Six seed PDFs · hybrid retrieval · offline by default._"
         )
     return ui
 
@@ -267,9 +280,9 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s — %(message)s",
     )
 
-    rag, agent = _boot()
-    ui = build_ui(rag, agent)
-    ui.queue(default_concurrency_limit=4).launch(
+    ui = build_ui()
+    # concurrency_limit=1: one GovRAG index per process (one SQLite owner thread).
+    ui.queue(default_concurrency_limit=1).launch(
         server_name=args.host,
         server_port=args.port,
         share=args.share,
