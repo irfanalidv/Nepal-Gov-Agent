@@ -1,27 +1,29 @@
 """
 FastAPI backend for nepalgov.datacortex.in.
 
-Boots RAG synchronously during lifespan startup. On Render Starter
-(2GB RAM, faster CPU), indexing completes in ~30-60s — under the
-10-minute port-binding timeout. SQLite stays on one thread so
-/api/ask can use the cache safely.
+RAGNav opens SQLite on the thread that creates GovRAG. Lifespan and background
+boot run on different threads than async request handlers, which triggers
+check_same_thread errors.
+
+Lazy init: the first /api/ask builds the index on the request's event-loop
+thread; later asks reuse the same connection. First query pays ~30-60s;
+the frontend warmup flow covers that.
 
 Local:
     pip install -e ".[web]"
     python web/app.py
-    # → http://127.0.0.1:8000
 
 Render:
-    Build:  pip install -e ".[web]"
-    Start:  python web/app.py
+    pip install -e ".[web]"
+    python web/app.py
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
@@ -35,54 +37,46 @@ from starlette.requests import Request
 
 logger = logging.getLogger(__name__)
 
-# Module-level state. Render workers are single-process so this is fine.
 _state: dict[str, Any] = {"rag": None, "agent": None, "ready": False, "error": None}
+_boot_lock = asyncio.Lock()
 
 
-# ---------------------------------------------------------------------------
-# Boot: blocking, runs during lifespan startup (main thread)
-# ---------------------------------------------------------------------------
+async def _ensure_booted() -> None:
+    """Build RAG on first call; SQLite opens on this request's thread."""
+    if _state["ready"]:
+        return
+    async with _boot_lock:
+        if _state["ready"]:
+            return
 
-def _boot() -> None:
-    """Build the RAG index. ~30-60s on Render Starter."""
-    t0 = time.time()
-    try:
-        from nepal_gov_agent import GovAgent, GovRAG, GovRAGConfig, download_corpus
+        t0 = time.time()
+        try:
+            from nepal_gov_agent import GovAgent, GovRAG, GovRAGConfig, download_corpus
 
-        corpus_dir = os.environ.get("NGA_CORPUS_DIR", "").strip()
-        if not corpus_dir:
-            logger.info("Downloading seed corpus...")
-            corpus_dir = download_corpus(dest_dir="./nepal_gov_data/")
+            corpus_dir = os.environ.get("NGA_CORPUS_DIR", "").strip()
+            if not corpus_dir:
+                logger.info("Downloading seed corpus...")
+                corpus_dir = download_corpus(dest_dir="./nepal_gov_data/")
 
-        cache_dir = os.environ.get("NGA_CACHE_DIR", ".nepal_gov_cache")
-        config = GovRAGConfig(cache_dir=cache_dir)
-        logger.info("Building RAG index from %s...", corpus_dir)
-        rag = GovRAG(corpus_dir=corpus_dir, config=config)
-        agent = GovAgent(rag=rag, session_id="web")
+            cache_dir = os.environ.get("NGA_CACHE_DIR", ".nepal_gov_cache")
+            config = GovRAGConfig(cache_dir=cache_dir)
+            logger.info("Building RAG index from %s...", corpus_dir)
+            rag = GovRAG(corpus_dir=corpus_dir, config=config)
+            agent = GovAgent(rag=rag, session_id="web")
 
-        _state["rag"] = rag
-        _state["agent"] = agent
-        _state["ready"] = True
-        logger.info("Boot complete in %.1fs: %s", time.time() - t0, rag.stats)
-    except Exception as exc:
-        _state["error"] = repr(exc)
-        logger.exception("Boot failed")
+            _state["rag"] = rag
+            _state["agent"] = agent
+            _state["ready"] = True
+            logger.info("Boot complete in %.1fs: %s", time.time() - t0, rag.stats)
+        except Exception as exc:
+            _state["error"] = repr(exc)
+            logger.exception("Boot failed")
+            raise
 
-
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    _boot()
-    yield
-
-
-# ---------------------------------------------------------------------------
-# App
-# ---------------------------------------------------------------------------
 
 app = FastAPI(
     title="Nepal GovAgent",
     description="Reference RAG implementation over Nepal's policy and legal corpus.",
-    lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
 )
@@ -91,10 +85,6 @@ WEB_DIR = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
 
-
-# ---------------------------------------------------------------------------
-# Models
-# ---------------------------------------------------------------------------
 
 class AskRequest(BaseModel):
     query: str = Field(min_length=1, max_length=500)
@@ -115,10 +105,6 @@ class AskResponse(BaseModel):
     elapsed_ms: int
 
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
-
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(request, "index.html", {})
@@ -138,8 +124,11 @@ async def health() -> dict[str, Any]:
 
 @app.post("/api/ask", response_model=AskResponse)
 async def ask(req: AskRequest) -> AskResponse:
-    if not _state["ready"]:
-        raise HTTPException(status_code=503, detail="Service warming up")
+    try:
+        await _ensure_booted()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Boot failed: {exc!r}")
+
     rag = _state["rag"]
     if rag is None:
         raise HTTPException(status_code=500, detail="RAG unavailable")
