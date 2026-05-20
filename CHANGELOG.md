@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.1
+
+- Pin `download_corpus()` URLs to the `v0.4.0` git tag so seed PDFs remain reachable after their removal from `main`.
+
 ## v0.4.0
 
 This release is a polish + honesty pass. No new agentic capability — the goal is to make the existing functionality credible enough to point a stranger at without caveats in person.

@@ -528,7 +528,7 @@ This is a meaningful signal for infrastructure quality. Answer quality evaluatio
 
 ## Release history
 
-**Current release:** `0.4.0` on PyPI — **18** tests passing; seed corpus via `download_corpus()` (opt-in, five PDFs).
+**Current release:** `0.4.1` on PyPI — **18** tests passing; seed corpus via `download_corpus()` (opt-in, five PDFs).
 
 - **0.4.0** — Polish + honesty pass. Synthetic eval harness with explicit "LLM-generated, not human-validated" labelling at every layer (report header, dataset README, CHANGELOG). Hosted Gradio demo at [nepalgov.datacortex.in](https://nepalgov.datacortex.in). Project reframed as a reference implementation; status set to maintenance.
 - **0.3.0** — Multilingual default embeddings (`multilingual-e5-small`), balanced BM25/vector weights, Nepali query preprocessing, Ollama client for local synthesis.

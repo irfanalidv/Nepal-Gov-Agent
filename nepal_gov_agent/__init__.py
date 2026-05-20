@@ -24,7 +24,7 @@ from .llm_ollama import OllamaClient
 from .preprocess import NEPALI_QUESTION_SUFFIXES, preprocess_query
 from .rag import GovRAG, GovRAGResult
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 __all__ = [
     "GovRAG",
