@@ -38,7 +38,7 @@ from .rag import GovRAG, GovRAGResult
 try:
     __version__ = _pkg_version("nepal-gov-agent")
 except PackageNotFoundError:  # pragma: no cover - source tree without install
-    __version__ = "0.6.0"
+    __version__ = "0.6.1"
 
 __all__ = [
     "NEPALI_QUESTION_SUFFIXES",

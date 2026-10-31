@@ -162,8 +162,7 @@ _INTRO = """\
 Reference RAG implementation over Nepal's policy and legal corpus.
 Hybrid retrieval (BM25 + multilingual embeddings), inline citations, fully
 offline-capable. Built on
-[RAGNav](https://pypi.org/project/ragnav/),
-[ragfallback](https://pypi.org/project/ragfallback/),
+[RAGNav](https://pypi.org/project/ragnav/)
 and [AgentEnsemble](https://pypi.org/project/agentensemble/).
 
 **Status: maintenance.** This is a published reference impl, not an actively

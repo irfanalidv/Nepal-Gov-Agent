@@ -352,7 +352,6 @@ Open an issue before starting anything large.
   (GitHub's "Cite this repository" button).
 - Built on [RAGNav](https://github.com/irfanalidv/RAGNav) (ingestion, retrieval, citations,
   fallback) and [AgentEnsemble](https://github.com/irfanalidv/AgentEnsemble) (pipeline, session
-  memory), both MIT and on PyPI. [ragfallback](https://github.com/irfanalidv/ragfallback) is a
-  declared dependency but is not imported by the package today.
+  memory), both MIT and on PyPI.
 - [MIT License](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/LICENSE). Built by
   [Irfan Ali](https://github.com/irfanalidv) ([DataCortex IQ](https://www.datacortex.in/)).
