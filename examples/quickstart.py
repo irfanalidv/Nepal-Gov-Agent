@@ -1,35 +1,31 @@
 """
-Nepal GovAgent quickstart (English + Nepali)
-============================================
-Problem  : Without cited retrieval, users cannot verify answers against official government PDFs.
-Module   : nepal_gov_agent.rag.GovRAG
-Dataset  : Nepal government seed PDFs (downloaded by download_corpus())
-Install  : pip install nepal-gov-agent
-Env vars : NONE
+Quickstart: ask the real Nepal government seed corpus (English + Nepali)
+=======================================================================
+Shows    : download the five seed PDFs, build the hybrid index, ask one English and
+           one Nepali question, print the extractive answer, confidence and the
+           (document, page) citations you can check against the PDF.
+Data     : the five seed PDFs, downloaded once into ./nepal_gov_data/ (~6.5 MB).
+Needs    : ``pip install nepal-gov-agent`` and network access for the first run
+           (PDFs + embedding model). No API key.
+Run      : python examples/quickstart.py
 """
 
 import logging
 
-logging.basicConfig(level=logging.INFO)
-
 from nepal_gov_agent import GovRAG, download_corpus
 
+logging.basicConfig(level=logging.WARNING)
+
 rag = GovRAG(corpus_dir=download_corpus())
-
 print("Corpus stats:", rag.stats)
-print()
 
-result = rag.ask("What is the vision of Nepal's National AI Policy?")
-print("Q: What is the vision of Nepal's National AI Policy?")
-print("A:", result.answer[:500])
-print("Confidence:", result.confidence)
-print("Sources:")
-for src in result.sources[:3]:
-    print(f"  - {src['doc']} page {src['page']}")
-print()
-
-result2 = rag.ask("नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?")
-print("Q: नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?")
-print("A:", result2.answer[:500])
-print("Confidence:", result2.confidence)
-print("Fallback triggered:", result2.fallback_triggered)
+for question in (
+    "What is the role of the National AI Centre?",
+    "नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?",
+):
+    result = rag.ask(question)
+    print(f"\nQ: {question}")
+    print("A:", " ".join(result.answer.split())[:300], "...")
+    print("Confidence:", result.confidence, "| fallback:", result.fallback_triggered)
+    for src in result.sources[:3]:
+        print(f"  - {src['doc']} page {src['page']}")
