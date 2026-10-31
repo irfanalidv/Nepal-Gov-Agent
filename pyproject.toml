@@ -75,7 +75,7 @@ mistral = [
 eval = ["openai>=1.40.0", "python-dotenv>=1.0.1"]
 # Gradio demo (local dev only).
 # Pin <5: Gradio 6 breaks tab clicks and moves theme to launch(); v0.4 demo targets 4.x.
-demo = ["gradio>=4.44.0,<5.0.0"]
+demo = ["gradio>=4.44.0,<7.0.0"]
 # FastAPI frontend for nepalgov.datacortex.in on Render.
 web = [
     "fastapi>=0.115.0",
