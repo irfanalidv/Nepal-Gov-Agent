@@ -2,638 +2,357 @@
 
 # Nepal GovAgent
 
-**Agentic RAG over Nepal's government policy and legal documents: offline-capable, Nepali + English, hybrid retrieval with citations.**
+**Cited, offline-capable question answering over Nepal's government policy and legal PDFs, in Nepali and English.**
 
 [![PyPI version](https://img.shields.io/pypi/v/nepal-gov-agent.svg)](https://pypi.org/project/nepal-gov-agent/)
-[![Python](https://img.shields.io/pypi/pyversions/nepal-gov-agent.svg)](https://pypi.org/project/nepal-gov-agent/)
+[![Python versions](https://img.shields.io/pypi/pyversions/nepal-gov-agent.svg)](https://pypi.org/project/nepal-gov-agent/)
+[![Downloads](https://static.pepy.tech/badge/nepal-gov-agent)](https://pepy.tech/projects/nepal-gov-agent)
 [![Tests](https://github.com/irfanalidv/Nepal-Gov-Agent/actions/workflows/tests.yml/badge.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent/actions/workflows/tests.yml)
-[![PyPI Downloads](https://static.pepy.tech/personalized-badge/nepal-gov-agent?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/nepal-gov-agent)
+[![CodeQL](https://github.com/irfanalidv/Nepal-Gov-Agent/actions/workflows/codeql.yml/badge.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Status](https://img.shields.io/badge/status-maintenance-blue.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent#status)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/irfanalidv/Nepal-Gov-Agent/blob/main/examples/Nepal_GovAgent_Demo.ipynb)
+[![typed: mypy](https://img.shields.io/badge/typed-mypy-blue.svg)](https://mypy-lang.org/)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/CONTRIBUTING.md)
 
 </div>
 
-> Reference RAG implementation over Nepal's policy and legal document corpus. Hybrid retrieval (BM25 + multilingual embeddings) with inline citations, agentic workflows, and offline-capable defaults. Built on [RAGNav](https://pypi.org/project/ragnav/), [ragfallback](https://pypi.org/project/ragfallback/), and [AgentEnsemble](https://pypi.org/project/agentensemble/).
+## Why
 
----
+An answer about citizenship rules or the National AI Policy is only useful if a citizen or
+official can check it against the source document. Nepal GovAgent is a reference implementation
+of that retrieval-and-citation layer: it indexes a folder of government PDFs, answers Nepali or
+English questions with the exact document and page behind every passage, reports how confident
+retrieval was, and runs on a laptop with no API key. An LLM is optional and only writes the final
+answer; retrieval always stays local.
 
-## Status
+> **Status: maintenance.** A published reference implementation, not a roadmapped product. Issues
+> and PRs are welcome; new feature work is best-effort. It is a research prototype, not cleared for
+> official government use (see [Scope and limitations](#scope-and-limitations)).
 
-**Maintenance.** This is a published reference implementation, not an actively roadmapped product. The goal of the project is to demonstrate end-to-end RAG against a real sovereign-AI corpus (Nepal's National AI Policy, Constitution, Digital Nepal Framework, etc.) using the author's open-source stack. PRs and issues are welcome; new feature work is on a best-effort basis.
+## Features
 
-If you want a production deployment with native-speaker NLP, real human-validated evaluation, and SLA support, that is consulting work — reach out via [datacortex.in](https://datacortex.in).
-
----
-
-## Why this exists
-
-Nepal has a digital government layer. The [Nagarik App](https://nagarikapp.gov.np/) has 1.5M+ registered citizens. Diyo AI has deployed Nepali-language chatbots for Lalitpur and Butwal municipalities. Paaila Technology has built Nepali NLU and TTS. Fusemachines is training hundreds of AI fellows.
-
-The conversational layer exists. What is missing is a worked example of a retrieval-and-citation layer over the legal and policy corpus those systems sit on top of — one that runs offline, handles both Nepali and English queries against the same documents, and reports honest confidence and provenance for every answer.
-
-This project is that worked example. It is not the entire answer to Nepal's [National AI Policy 2082](https://aiassociationnepal.org/national-artificial-intelligence-ai-policy-2082/), but it shows what one piece of the infrastructure could look like, with code you can read, modify, and deploy on a laptop.
-
----
+| | |
+|---|---|
+| **Hybrid retrieval** | BM25 + multilingual dense embeddings (`intfloat/multilingual-e5-small`), fused with Reciprocal Rank Fusion, via [RAGNav](https://pypi.org/project/ragnav/) |
+| **Citations** | Every source carries `doc`, `page`, `block_id` and an excerpt; LLM answers must cite `[[block_id]]` per sentence or fall back to the extractive answer |
+| **Nepali + English** | Unicode NFC normalisation and Nepali question-suffix stripping; one index serves both languages |
+| **Offline by default** | Extractive answers with no LLM; optional local [Ollama](https://ollama.com/) client; SQLite embedding cache |
+| **Confidence + fallback** | Retrieval confidence (`high`/`medium`/`low`); low-confidence queries are retried with LLM rewrites (RAGNav `QueryFallback`) |
+| **Agent workflows** | `GovAgent`: `document_qa`, `service_guide` (eligibility, then procedure) and `corpus_search`, with SQLite session memory ([AgentEnsemble](https://pypi.org/project/agentensemble/)) |
+| **Evaluation** | Recall@k / keyword / document hit-rate harness, a 7-question smoke test and a labelled 96-pair synthetic set |
+| **CLI** | `nepal-gov-agent download / ask / agent / benchmark / stats` |
+| **Typed** | Ships `py.typed`; checked with mypy |
 
 ## Install
 
-Requires **Python 3.10+**.
+Requires Python 3.10+.
 
 ```bash
 pip install nepal-gov-agent
-nepal-gov-agent download          # fetch the five seed PDFs into ./nepal_gov_data/
+# or
+uv add nepal-gov-agent            # inside a uv project
+uv pip install nepal-gov-agent    # into the active environment
 ```
 
 Optional extras:
 
 ```bash
-pip install "nepal-gov-agent[mistral]"   # Mistral API client for cited answers
-pip install "nepal-gov-agent[ollama]"    # marker extra; run Ollama locally (OllamaClient)
+pip install "nepal-gov-agent[mistral]"   # Mistral client for cited LLM answers
 pip install "nepal-gov-agent[eval]"      # OpenAI client for synthetic eval generation
 pip install "nepal-gov-agent[web]"       # FastAPI frontend (python web/app.py from a clone)
-pip install "nepal-gov-agent[dev]"       # pytest, ruff, build, twine
+pip install "nepal-gov-agent[demo]"      # Gradio demo (python demo/app.py from a clone)
+pip install "nepal-gov-agent[dev]"       # pytest, coverage, ruff, mypy, pre-commit, build, twine
 ```
 
----
+PDFs are not bundled on PyPI or in git. `download_corpus()` (or `nepal-gov-agent download`) fetches
+five public seed PDFs into `./nepal_gov_data/`, or you can point `GovRAG` at any folder of PDFs.
+The first run also downloads the embedding model from Hugging Face; after that everything works
+offline.
 
-## Quick start
-
-PDFs are **not** bundled on PyPI or in git. Fetch the seed set with `download_corpus()` (writes `./nepal_gov_data/`). Add your own PDFs to that folder or any path you pass to `GovRAG`.
+## Quickstart
 
 ```python
-from nepal_gov_agent import GovRAG, GovRAGConfig, download_corpus
+from nepal_gov_agent import GovAgent, GovRAG, download_corpus
 
-config = GovRAGConfig()  # offline by default; tune via GovRAGConfig fields
-corpus_dir = download_corpus()
-rag = GovRAG(corpus_dir=corpus_dir, config=config)
-result = rag.ask("What is the vision of Nepal's National AI Policy?")
-
-print(result.answer)
-print(result.confidence)   # "high" | "medium" | "low"
-for src in result.sources:
-    print(src["doc"], "page", src["page"])
-```
-
-**Real output:**
-
-```
-[National AI Policy-Final_uxc94vg.pdf, p.1] Introduction
-The vision of Nepal's National AI Policy is to build an ethical, safe, and
-human-centric AI ecosystem that promotes inclusive and sustainable socio-economic
-growth through responsible use of artificial intelligence...
-
----
-
-[National AI Policy-Final_uxc94vg.pdf, p.2] Objectives
-The mission focuses on maximising AI use for Nepal's socio-economic development...
-
-high
-National AI Policy-Final_uxc94vg.pdf page 1
-National AI Policy-Final_uxc94vg.pdf page 2
-dnf_jbji8eb.pdf page 4
-```
-
----
-
-## GovAgent workflows (Phase 2)
-
-`GovAgent` layers [AgentEnsemble](https://github.com/irfanalidv/AgentEnsemble) pipeline orchestration on top of `GovRAG`, with SQLite session memory. Workflows: **`document_qa`** (default), **`service_guide`** (eligibility then procedure), **`corpus_search`** (raw blocks, no synthesis).
-
-```python
-import logging
-from nepal_gov_agent import GovRAG, GovAgent, download_corpus
-
-logging.basicConfig(level=logging.INFO)
-
-corpus_dir = download_corpus()
-rag = GovRAG(corpus_dir=corpus_dir)
-agent = GovAgent(rag=rag, session_id="demo")
-
-result = agent.run("What is the role of the National AI Centre?")
-print(result.answer)
-print("Confidence:", result.confidence)
-
-guide = agent.run(
-    "How do I apply for a citizenship certificate renewal in Nepal?",
-    workflow="service_guide",
-)
-print(guide.answer[:500])
-```
-
-CLI:
-
-```bash
-nepal-gov-agent agent "How do I renew my citizenship?"
-nepal-gov-agent agent "How do I get a driving licence?" --workflow service_guide
-nepal-gov-agent agent "AI policy infrastructure" --workflow corpus_search
-nepal-gov-agent agent "..." --session my_session_id
-```
-
-Examples: `examples/agent_workflow.py`, `examples/service_guide.py`.
-
----
-
-## Use cases
-
-Examples below assume you have run `corpus_dir = download_corpus()` once (→ `./nepal_gov_data/`).
-
-### 1. Query the Nepal AI Policy (English)
-
-```python
-from nepal_gov_agent import GovRAG, download_corpus
-
-corpus_dir = download_corpus()
-rag = GovRAG(corpus_dir=corpus_dir)
+rag = GovRAG(corpus_dir=download_corpus())  # five seed PDFs -> ./nepal_gov_data/
 
 result = rag.ask("What is the role of the National AI Centre?")
-print(result.answer)
-print("Confidence:", result.confidence)
-```
-
-**Real output:**
-```
-[National AI Policy-Final_uxc94vg.pdf, p.18] National AI Centre
-The National AI Centre shall serve as the Secretariat of the AI Regulation
-Council. It will promote, encourage, and regulate AI study, research,
-development, and application. The Centre is tasked with conducting research
-and development in the AI technology sector and supporting the capacity
-development of local researchers and institutions...
-
-Confidence: high
-```
-
----
-
-### 2. Nepali language query
-
-```python
-result = rag.ask("नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?")
-
-print(result.answer)
-print("Confidence:", result.confidence)
-print("Fallback triggered:", result.fallback_triggered)
-```
-
-**Real output:**
-```
-[National AI Policy-Final_uxc94vg.pdf, p.1] Introduction
-Nepal's AI Policy aims to build a reliable AI ecosystem, boost economic
-productivity, improve public services, and strengthen governance. The
-objectives include building infrastructure, promoting research, and
-ensuring ethical and secure AI deployment...
-
-Confidence: medium
-Fallback triggered: False
-```
-
----
-
-### 3. Constitution query
-
-```python
-result = rag.ask("What does the Constitution say about fundamental rights?")
-
-print(result.answer[:600])
-print("\nSources:")
+print(result.confidence)                     # "high" | "medium" | "low"
 for src in result.sources[:3]:
-    print(f"  {src['doc']} — page {src['page']}")
-    if src["heading"]:
-        print(f"  Section: {src['heading']}")
+    print(src["doc"], "page", src["page"])
+
+# Multi-step workflow with SQLite session memory
+agent = GovAgent(rag=rag, session_id="demo")
+guide = agent.run("citizenship certificate renewal", workflow="service_guide")
+print(guide.workflow, len(guide.steps), "steps,", len(guide.sources), "sources")
 ```
 
-**Real output:**
-```
-[Constitution of Nepal (2nd amd. English)_xf33zb3.pdf, p.12] Part 3 — Fundamental Rights
-Every citizen shall have the following rights: Right to equality before
-law. No discrimination shall be made against any citizen in the application
-of general laws on grounds of origin, religion, race, caste, tribe, sex,
-economic condition, language, region, ideology or on similar other grounds...
+Output from a run on 2026-10-31 (v0.6.0, default config, seed corpus):
 
-Sources:
-  Constitution of Nepal (2nd amd. English)_xf33zb3.pdf — page 12
-  Section: Part 3 — Fundamental Rights
-  Constitution of Nepal (2nd amd. English)_xf33zb3.pdf — page 13
-  Constitution of Nepal (2nd amd. English)_xf33zb3.pdf — page 14
+```text
+medium
+National AI Policy-Final_uxc94vg.pdf page 42
+National AI Policy-Final_uxc94vg.pdf page 18
+National AI Policy-Final_uxc94vg.pdf page 38
+service_guide 2 steps, 12 sources
 ```
 
----
+`result.answer` is extractive: the top passages, each prefixed with `[document, p.N]`. Pass
+`llm=` to `ask()` for a written answer with inline citations (see
+[`cited_answers_llm.py`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/examples/cited_answers_llm.py)).
 
-### 4. Raw search (no answer generation)
-
-```python
-blocks = rag.search("National AI Centre secretariat", k=5)
-
-for b in blocks:
-    print(b["doc_id"])
-    print(b["title"])
-    print(b["content"][:200])
-    print("---")
-```
-
-**Real output:**
-```
-pdf:National AI Policy-Final_uxc94vg.pdf
-None
-10.2 National AI Centre
-The National AI Centre shall serve as the Secretariat of the AI Regulation
-Council. It will promote, encourage, and regulate AI study, research,
-development and application...
----
-pdf:National AI Policy-Final_uxc94vg.pdf
-None
-10.1 AI Regulation Council
-The AI Regulation Council shall meet at least twice a year. The National
-AI Centre shall serve as its Secretariat...
----
-```
-
----
-
-### 5. With LLM for cited answers (Mistral)
-
-```python
-import os
-from ragnav.llm.mistral import MistralClient
-from nepal_gov_agent import GovRAG, download_corpus
-
-os.environ["MISTRAL_API_KEY"] = "your_key_here"  # or load from .env
-
-corpus_dir = download_corpus()
-rag = GovRAG(corpus_dir=corpus_dir)
-llm = MistralClient()
-
-result = rag.ask(
-    "How many AI professionals does Nepal aim to train?",
-    llm=llm,
-    with_citations=True,
-)
-print(result.answer)
-```
-
-**Real output (with citations):**
-```
-Nepal aims to train at least 5,000 skilled AI professionals within five
-years [[pdf:National AI Policy-Final_uxc94vg.pdf#p3]]. This target is
-part of a broader capacity-building initiative that includes integrating
-AI curricula from school to university level [[pdf:National AI Policy-Final_uxc94vg.pdf#p4]].
-```
-
----
-
-### 6. Run the benchmark
-
-```python
-from nepal_gov_agent import GovRAG, run_benchmark
-
-rag = GovRAG(corpus_dir="./nepal_gov_data/")
-results = run_benchmark(rag, verbose=True)
-print(results.report())
-```
-
-**Real output** (from a local corpus with five seed PDFs via `download_corpus()` — run `run_benchmark(rag)` on your `corpus_dir` for live numbers):
-```
-  ✓ [english] What is the vision of Nepal's National AI Policy?...
-  ✓ [english] What are the four pillars of Nepal's AI readiness?...
-  ✓ [english] What is the role of the National AI Centre?...
-  ✓ [english] How many AI professionals does Nepal aim to train?...
-  ✓ [english] What does the Constitution say about fundamental rights...
-  ✓ [english] What is Digital Nepal Framework 2.0?...
-  ✓ [nepali] नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?...
-
-============================================================
-Nepal GovAgent Benchmark Results
-============================================================
-Total queries:      7
-Recall@1:           0.571
-Recall@3:           0.857
-Recall@5:           1.000
-Keyword hit rate:   1.000
-Doc hit rate:       1.000
-Nepali recall@3:    1.000
-English recall@3:   0.833
-============================================================
-```
-
-> **Note:** These numbers measure **retrieval**, not generated answer quality. Recall@3 = 0.857 means the expected keywords appeared in the top 3 retrieved blocks for 6 of 7 queries. Doc hit rate = 1.000 means the expected source PDF appeared in the top‑5 hits for every query (harness normalizes the `pdf:` doc id prefix). See [Benchmark: retrieval not answer quality](#benchmark-retrieval-not-answer-quality) below.
-
-#### Synthetic eval (v0.4.0+)
-
-The 7-question set above is a smoke test. For a larger eval, `nepal_gov_agent.eval` can auto-generate QA pairs from each page of the corpus using OpenAI, validating that expected keywords appear verbatim in the source passage before saving the pair.
+CLI equivalents:
 
 ```bash
-pip install 'nepal-gov-agent[eval]'
-export OPENAI_API_KEY=sk-...
-
-# Generate ~100-200 pairs across the seed corpus (idempotent)
-python -m nepal_gov_agent.eval.generate --corpus ./nepal_gov_data/ --max-per-doc 20 --verbose
-
-# Run benchmark against the generated set
-nepal-gov-agent benchmark --corpus ./nepal_gov_data/ --synthetic
-```
-
-The report header explicitly labels the result as `SYNTHETIC eval — LLM-generated, NOT human-validated`, and ships with a disclaimer block. **These numbers are a regression signal, not ground truth.** Anyone reporting them without the disclaimer is misrepresenting what they are. See [`eval_data/README.md`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/eval_data/README.md) for what synthetic eval is, isn't, and what real evaluation would look like.
-
----
-
-### 7. CLI
-
-```bash
-# Download the seed corpus (default folder for every command below: ./nepal_gov_data/)
 nepal-gov-agent download
-
-# Ask in English
-nepal-gov-agent ask "What is Nepal's National AI Policy?"
-
-# Ask in Nepali
 nepal-gov-agent ask "नेपालको राष्ट्रिय AI नीतिको उद्देश्य के हो?"
-
-# Custom corpus folder
-nepal-gov-agent ask "What are fundamental rights?" --corpus /path/to/docs/
-
-# Retrieve more blocks
-nepal-gov-agent ask "AI infrastructure" --k 10
-
-# Run benchmark (after download_corpus() → ./nepal_gov_data/)
-nepal-gov-agent benchmark --corpus ./nepal_gov_data/
-nepal-gov-agent benchmark --corpus ./nepal_gov_data/
-
-# Run synthetic benchmark (generate first with python -m nepal_gov_agent.eval.generate)
-nepal-gov-agent benchmark --corpus ./nepal_gov_data/ --synthetic
-
-# Show corpus stats
+nepal-gov-agent agent "citizenship renewal" --workflow service_guide --session alice
+nepal-gov-agent benchmark            # add --synthetic for the 96-pair LLM-generated set
 nepal-gov-agent stats
-
-# GovAgent (Phase 2): document_qa (default), service_guide, corpus_search
-nepal-gov-agent agent "How do I renew my citizenship?"
-nepal-gov-agent agent "citizenship renewal" --workflow service_guide
-nepal-gov-agent agent "National AI Centre" --workflow corpus_search --session my_session
 ```
 
-**Real CLI output (`ask`):**
+## How it works
+
+```mermaid
+flowchart LR
+    subgraph Ingest["Index build (GovRAG.__init__)"]
+        DL["download_corpus()<br/>or your own folder"] --> PDF[("*.pdf")]
+        PDF --> ING["ingest_corpus()<br/>PyMuPDF page blocks"]
+        ING --> IDX["RAGNavIndex<br/>BM25 + e5 vectors"]
+        CACHE[("SQLite<br/>embedding cache")] <--> IDX
+    end
+
+    subgraph Ask["GovRAG.ask(query, llm=None)"]
+        Q["query"] --> PRE["preprocess_query()<br/>NFC, strip Nepali suffix"]
+        PRE --> RET["RAGNavRetriever<br/>RRF fusion"]
+        RET -->|confidence LOW| FB["QueryFallback<br/>LLM rewrites"]
+        FB --> RANK
+        RET --> RANK["rank-order blocks"]
+        RANK -->|no llm| EXT["extractive answer<br/>[doc, p.N] passages"]
+        RANK -->|llm| CIT["answer_with_inline_citations<br/>[[block_id]] per sentence"]
+        CIT -.->|LLM error or uncited| EXT
+    end
+
+    IDX --> RET
+    EXT --> RES["GovRAGResult<br/>answer, sources, confidence"]
+    CIT --> RES
+
+    subgraph Agent["GovAgent.run(workflow)"]
+        WF["document_qa / service_guide /<br/>corpus_search"] --> ENS["AgentEnsemble pipeline<br/>(eligibility -> procedure)"]
+        ENS --> MEM[("SQLiteSession<br/>memory")]
+    end
+    ENS --> Ask
 ```
-============================================================
-ANSWER
-============================================================
-[National AI Policy-Final_uxc94vg.pdf, p.1] Introduction
-The vision of Nepal's National AI Policy is to build an ethical, safe,
-and human-centric AI ecosystem...
 
-============================================================
-SOURCES
-============================================================
-1. National AI Policy-Final_uxc94vg.pdf (page 1)
-   Excerpt: The vision of Nepal's National AI Policy is to build an ethical...
-2. National AI Policy-Final_uxc94vg.pdf (page 2)
-   Excerpt: The mission focuses on maximising AI use for Nepal's socio-econ...
-3. dnf_jbji8eb.pdf (page 4)
-   Excerpt: Digital Nepal Framework 2.0 builds upon the comprehensive vision...
+Key design decisions:
 
-Confidence: high
-```
+- **Retrieval is local; generation is optional.** Without an `llm` the answer is the cited
+  passages themselves, so nothing leaves the machine and nothing can be hallucinated. With an `llm`,
+  RAGNav rejects answers that leave a sentence uncited or cite an unknown block, and GovRAG logs the
+  failure and returns the extractive answer instead of raising.
+- **Rank order is preserved.** RAGNav's structure expansion returns blocks in document order;
+  GovRAG restores score order from the retrieval trace so `sources[0]` is the best match. (Before
+  v0.6.0 this was not the case; see [Benchmark](#benchmark).)
+- **RRF fusion by default.** Rank-based fusion needs no score calibration between BM25 and cosine
+  similarity. Under RRF, `w_bm25` / `w_vec` only switch a retriever on or off; set
+  `fusion="weighted"` to blend normalised scores with those weights.
+- **Fallback only on LOW confidence**, so confident queries never pay for rewrites. Rewrites come
+  from the `llm` you pass; without one RAGNav's offline stub just echoes the prompt.
+- **Embedding cache keyed to the model.** Changing `embedding_model` clears the cache, so vectors
+  from two models are never mixed.
+- **Errors are typed.** Everything raised derives from `NepalGovAgentError` and also from the
+  built-in type older releases raised (`FileNotFoundError`, `ValueError`, `RuntimeError`).
 
----
+## Use cases and recipes
 
-### 8. Corpus statistics
+| Script | What it shows | Needs |
+|---|---|---|
+| [`citizen_helpdesk.py`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/examples/citizen_helpdesk.py) | Eligibility + procedure answers (`service_guide`) and follow-ups stored per citizen session | Offline mini corpus |
+| [`bring_your_own_corpus.py`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/examples/bring_your_own_corpus.py) | Your own PDF folder, weighted fusion, `allowed_doc_ids` scoping, raw `search`, a Nepali query on English PDFs | Offline mini corpus |
+| [`cited_answers_llm.py`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/examples/cited_answers_llm.py) | `ask(llm=...)` with `[[block_id]]` citations; stub LLM offline or `--ollama` for a local model | Offline (Ollama optional) |
+| [`quickstart.py`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/examples/quickstart.py) | English and Nepali questions on the real seed corpus, with page citations | Network on first run |
+| [`benchmark_corpus.py`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/examples/benchmark_corpus.py) | Smoke-test benchmark plus your own QA pairs for regression tracking | Network on first run |
+| [`Nepal_GovAgent_Demo.ipynb`](https://colab.research.google.com/github/irfanalidv/Nepal-Gov-Agent/blob/main/examples/Nepal_GovAgent_Demo.ipynb) | Colab walkthrough of the seed corpus with business-style questions | Colab; LLM cells need a reachable Ollama server |
+
+"Offline mini corpus" scripts generate three small PDFs on the fly
+([`_mini_corpus.py`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/examples/_mini_corpus.py));
+they need no key and no network once the embedding model is cached.
+
+<details>
+<summary><b>Cited answers with a real LLM (Ollama or Mistral)</b></summary>
+
+Local, no key (`ollama serve` and `ollama pull qwen2.5:7b` first):
 
 ```python
-import logging
-
-from nepal_gov_agent import GovRAG
-
-logging.basicConfig(level=logging.WARNING)
+from nepal_gov_agent import GovRAG, OllamaClient
 
 rag = GovRAG(corpus_dir="./nepal_gov_data/")
-print(rag.stats)
+result = rag.ask("How many AI professionals does Nepal aim to train?", llm=OllamaClient())
+print(result.answer, result.cited_block_ids)
 ```
 
-**Real output:**
-```python
-{
-    "documents": 6,
-    "blocks": 856,
-    "corpus_dir": "./nepal_gov_data/",
-    "offline": True
-}
-```
-
----
-
-### 9. Custom config
+Hosted (needs `pip install "nepal-gov-agent[mistral]"` and `MISTRAL_API_KEY`):
 
 ```python
-from nepal_gov_agent import GovRAG, GovRAGConfig
+from ragnav.llm.mistral import MistralClient
 
-config = GovRAGConfig(
-    w_bm25=0.7,              # More weight on keyword search
-    w_vec=0.3,               # Less weight on semantic search
-    k_final=12,              # Retrieve more blocks
-    max_fallback_attempts=5, # More retries on low confidence
-    cache_dir=".my_cache",
-    embedding_model="intfloat/multilingual-e5-small",
-)
-
-rag = GovRAG(corpus_dir="./nepal_gov_data/", config=config)
-result = rag.ask("What is the Digital Nepal Framework?")
+result = rag.ask("How many AI professionals does Nepal aim to train?", llm=MistralClient())
 ```
 
----
+These two snippets need a running Ollama daemon or a Mistral key and were not run for this README.
+</details>
 
-## Configuration and environment variables
+## Configuration
 
-Retrieval is configured in code through `GovRAGConfig` (see *Custom config* above). The core
-library needs **no** environment variables or API keys. Optional ones:
+`GovRAGConfig` (frozen dataclass, validated on construction):
+
+| Field | Default | Meaning |
+|---|---|---|
+| `embedding_model` | `intfloat/multilingual-e5-small` | sentence-transformers model for dense retrieval |
+| `fusion` | `"rrf"` | `"rrf"` (rank-based) or `"weighted"` (min-max score blend) |
+| `w_bm25`, `w_vec` | `0.5`, `0.5` | Score weights under `"weighted"`; under `"rrf"`, 0 disables that retriever |
+| `k_bm25`, `k_vec` | `30`, `30` | Candidates taken from each retriever before fusion |
+| `k_final` | `8` | Blocks kept per question (`ask(k_final=...)` overrides) |
+| `max_fallback_attempts` | `3` | QueryFallback attempts on LOW confidence (`1` disables) |
+| `cache_dir` | `.nepal_gov_cache` | SQLite embedding cache folder |
+| `offline`, `language` | `True`, `"auto"` | Informational / reserved; they do not change retrieval |
+
+`GovAgentConfig.session_db` (default `gov_agent_sessions.db`) sets the session-memory file.
+`OllamaClient(model="qwen2.5:7b", base_url="http://localhost:11434", timeout=120.0)`.
+
+Environment variables (the core library needs none):
 
 | Variable | Used by | Purpose |
 |---|---|---|
-| `MISTRAL_API_KEY` | `ragnav.llm.mistral.MistralClient` (`[mistral]` extra) | Cited answer generation via Mistral |
-| `OPENAI_API_KEY` | `python -m nepal_gov_agent.eval.generate` (`[eval]` extra) | Synthetic eval generation |
-| `NGA_CORPUS_DIR` | `web/app.py`, `demo/app.py` | Use an existing PDF folder instead of downloading the seed corpus |
-| `NGA_CACHE_DIR` | `web/app.py`, `demo/app.py` | Embedding / retrieval cache folder (default `.nepal_gov_cache`) |
+| `MISTRAL_API_KEY` | `ragnav.llm.mistral.MistralClient` (`[mistral]`) | Cited answers via Mistral |
+| `OPENAI_API_KEY` | `python -m nepal_gov_agent.eval.generate` (`[eval]`) | Synthetic eval generation (or pass `api_key=`) |
+| `NGA_CORPUS_DIR` | `web/app.py`, `demo/app.py` | Use an existing PDF folder instead of downloading |
+| `NGA_CACHE_DIR` | `web/app.py`, `demo/app.py` | Cache folder (default `.nepal_gov_cache`) |
+| `NEPAL_GOV_CORPUS_DIR` | test suite | Run tests against the real seed corpus |
 
-Copy `.env.example` to `.env` for local development; never commit real keys.
+## API overview
 
----
+| Object | Purpose |
+|---|---|
+| `GovRAG(corpus_dir, config)` | Build the index. `.ask(query, llm=None, k_final=None, with_citations=True, allowed_doc_ids=None)` returns `GovRAGResult`; `.search(query, k)` returns ranked raw blocks; `.stats` |
+| `GovRAGResult` | `answer`, `sources`, `cited_block_ids`, `confidence`, `query_used`, `fallback_triggered` |
+| `GovAgent(rag, config, session_id)` | `.run(query, workflow="document_qa", k_final=None)` returns `GovAgentResult`; `.history`, `.clear_history()` |
+| `GovRAGConfig`, `GovAgentConfig` | Settings (see above) |
+| `OllamaClient` | Local LLM for `ask(llm=...)` |
+| `download_corpus(dest_dir, force)` | Fetch the five seed PDFs |
+| `preprocess_query(text)` | The query normalisation used by `ask` / `search` |
+| `run_benchmark(rag, qa_pairs=None, k_values=None)` | Retrieval metrics; returns `BenchmarkResult` (`.report()`) |
+| `run_synthetic_benchmark`, `load_synthetic_qa`, `generate_synthetic_qa` | Synthetic eval set |
+| `NepalGovAgentError` and subclasses | `CorpusNotFoundError`, `EmptyCorpusError`, `CorpusDownloadError`, `LLMUnavailableError`, `MissingDependencyError` |
 
-## Corpus
+## Benchmark
 
-### Seed corpus (`download_corpus()`)
+The harness measures **retrieval**, not answer quality: a query counts as a hit at k when any
+expected keyword appears in the top-k retrieved blocks. Numbers below come from one run on
+2026-10-31 with v0.6.0, the default config and the five seed PDFs (5 documents, 327 blocks).
+Run `nepal-gov-agent benchmark` for numbers on your install.
 
-The wheel and git repo do **not** bundle PDFs. `download_corpus()` pulls **five** public policy/gazette files into `./nepal_gov_data/`:
+| Eval set | Queries | Recall@1 | Recall@3 | Recall@5 | Doc hit | English R@3 | Nepali R@3 |
+|---|---|---|---|---|---|---|---|
+| Hand-curated smoke test | 7 | 0.714 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 (1 query) |
+| Synthetic, LLM-generated, **not human-validated** | 96 | 0.490 | 0.604 | 0.656 | 0.688 | 0.707 | 0.238 |
+
+- The smoke test is seven questions: a "is anything broken" check, not a benchmark.
+- The synthetic set was drafted by `gpt-4.1-mini` from the corpus pages, keeping only pairs whose
+  keywords occur verbatim in the source page. Use it as a regression signal, not ground truth; see
+  [`eval_data/README.md`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/eval_data/README.md)
+  and [`docs/synthetic-eval.md`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/docs/synthetic-eval.md).
+- **Nepali queries retrieve much worse than English ones** (0.238 vs 0.707 Recall@3 on the
+  synthetic set). Part of that is the embedding model, part is likely LLM-translated test questions;
+  separating the two needs native-speaker review.
+- The v0.6.0 rank-order fix moved synthetic Recall@1 from 0.229 to 0.490 and Recall@3 from 0.490 to
+  0.604 on the same corpus and config; v0.5.0 scored blocks in document order.
+
+## Research and references
+
+The retrieval stack, implemented in RAGNav and used here, builds on:
+
+- **BM25**: S. Robertson and H. Zaragoza, "The Probabilistic Relevance Framework: BM25 and Beyond,"
+  *Foundations and Trends in Information Retrieval* 3(4), 2009.
+- **Reciprocal Rank Fusion** (k = 60): G. V. Cormack, C. L. A. Clarke and S. Büttcher, "Reciprocal
+  Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods," *SIGIR* 2009.
+- **Multilingual E5** (default embedding model): L. Wang et al., "Multilingual E5 Text Embeddings:
+  A Technical Report," arXiv:2402.05672, 2024.
+
+## When to use it
+
+- **Good fit:** a worked, readable example of cited RAG over a sovereign legal/policy corpus; a
+  starting point for a Nepali-government document assistant; offline or air-gapped prototypes;
+  teaching hybrid retrieval with honest evaluation.
+- **Poor fit:** production government deployment as-is, scanned PDFs without OCR, or workloads that
+  need strong Nepali-to-Nepali retrieval today (see the benchmark gap above).
+
+<details>
+<summary><b>Seed corpus and bring-your-own corpus</b></summary>
+
+`download_corpus()` pulls five public files into `./nepal_gov_data/` from the pinned `v0.4.0` tag:
 
 | Document | Language |
 |---|---|
 | National AI Policy 2082 | English |
 | Constitution of Nepal (2nd amendment) | English |
 | Digital Nepal Framework 2.0 | English |
-| प्रतिनिधि सभा सदस्य निर्वाचन अध्यादेश २०८२ | Nepali |
+| प्रतिनिधि सभा सदस्य निर्वाचन (पहिलो संशोधन) अध्यादेश २०८२ | Nepali |
 | मानव अधिकार पुरस्कार कोष सञ्चालन नियमावली २०७५ | Nepali |
 
-It **omits** *Legal Maxims* (`1714977234_32.pdf`) because that reference volume is very large and often dominates hybrid retrieval over shorter Nepali ordinances. Add that file yourself if you need it for local experiments.
+It omits the Law Commission's *Legal Maxims* volume (`1714977234_32.pdf`): it is very large and
+tends to dominate hybrid retrieval over the shorter Nepali ordinances.
 
-```python
-from nepal_gov_agent import download_corpus, GovRAG
+Any flat folder of PDFs works (`GovRAG(corpus_dir="./my_ministry_docs/")`); subfolders are not
+scanned, and scanned (image-only) PDFs need OCR first. If you know of publicly available Nepal
+government PDFs, opening an issue with links is the most useful contribution.
+</details>
 
-corpus_dir = download_corpus()  # → ./nepal_gov_data/ (absolute path returned)
-rag = GovRAG(corpus_dir=corpus_dir)
-```
+<details>
+<summary><b>Nepal context</b></summary>
 
-### Bring your own corpus
+- **August 2025**: Nepal's Cabinet approved the
+  [National AI Policy 2082](https://aiassociationnepal.org/national-artificial-intelligence-ai-policy-2082/).
+- **February 2026**: the World Bank
+  [approved a $50M](https://coingeek.com/nepal-secures-50m-for-digitalization-approved-by-world-bank/)
+  Nepal Digital Transformation Project.
+- Citizen-facing services such as the [Nagarik App](https://nagarikapp.gov.np/) already exist; this
+  project explores the retrieval-and-citation layer over the legal and policy documents beneath them.
+</details>
 
-Point `GovRAG` at any folder of Nepal government PDFs — ministry circulars, municipal SOPs, provincial guidelines, land records, anything you are allowed to use:
+## Scope and limitations
 
-```python
-rag = GovRAG(corpus_dir="./my_ministry_docs/")
-```
+Nepal GovAgent is a research prototype. The benchmark measures retrieval, not answer safety,
+factual correctness or suitability for official use. Any government deployment would also need a
+security audit, data-sovereignty controls, a human review step for every answer, and official
+approval and integration. `GovRAG` instances are bound to the thread that created them (SQLite);
+`web/app.py` shows a single-worker pattern for serving.
 
-No extra configuration. Put PDFs in a single folder (not subfolders) and pass that path as `corpus_dir`.
+## Roadmap
 
-**Contributing:** If you have publicly available Nepal government PDFs, open an issue with links or a PR describing sources — expanding the corpus is the highest-priority contribution this project needs.
+Open for contributors; no committed timeline:
 
----
+- Native-speaker review of the synthetic set and a small human-validated subset.
+- Better Nepali retrieval: proper tokenisation / transliteration (e.g. IndicNLP or Stanza) and
+  embedding-model comparisons.
+- Corpus expansion (ministry circulars 2080-2082) and an index over amendments.
+- Answer-quality evaluation (LLM-as-judge with human spot checks).
 
-## Under the hood
+Open an issue before starting anything large.
 
-```
-Nepal GovAgent
-│
-├── RAG Layer          →  ragnav>=0.5.1
-│   ├── PDF ingestion (PyMuPDF, page-level blocks)
-│   ├── BM25 index (rank-bm25)
-│   ├── Vector index (sentence-transformers, multilingual-e5-small by default)
-│   ├── Hybrid retrieval (BM25 0.5 + vector 0.5 by default, RRF fusion)
-│   ├── Structure expansion (parent/child block hierarchy)
-│   ├── QueryFallback for low-confidence query retries
-│   ├── Inline citation enforcement
-│   └── SQLite embedding + retrieval cache (offline)
-│
-├── Reliability Layer  →  ragfallback>=2.0.2
-│   └── Metrics and adaptive utilities (PyPI dependency; GovRAG benchmark uses keyword / Recall@k on retrieved blocks)
-│
-└── Agent Layer        →  agentensemble>=0.3.0 (Phase 2)
-    └── Multi-step workflows (pipeline conductor), SQLite session memory
-```
+## Contributing, security, citation, license
 
-**Key design decisions:**
-- Default hybrid weights 0.5 / 0.5: multilingual embeddings help Nepali queries; BM25 still anchors legal keywords
-- Offline by default: `intfloat/multilingual-e5-small` runs on CPU with no API key needed
-- SQLite cache: embeddings cached locally — second run is instant
-- Fallback only on `ConfidenceLevel.LOW`: avoids unnecessary LLM calls on already-confident retrievals
-
----
-
-## Benchmark: retrieval, not answer quality
-
-The built-in benchmark measures **retrieval quality** — whether the right content appears in the top-k retrieved blocks. It does not evaluate answer accuracy, fluency, or factual correctness.
-
-When presenting results to stakeholders:
-
-> "Recall@3 = 0.857 means that for 6 out of 7 test queries, the relevant section of the government document appeared in the top 3 retrieved chunks."
-
-This is a meaningful signal for infrastructure quality. Answer quality evaluation (LLM-as-judge, BLEU/ROUGE) is planned for a later phase.
-
----
-
-## The gap this fills
-
-| Layer | Who's doing it | What's missing |
-|---|---|---|
-| Nepali NLP / NLU | Paaila Technology, Diyo AI | — |
-| Government chatbots | Diyo AI (Muna), Fusemachines | — |
-| AI training / fellowships | Fusemachines | — |
-| **Legal RAG with citation** | **Nobody** | **← This project** |
-| **Adaptive retrieval fallback** | **Nobody** | **← This project** |
-| **Offline-capable full stack** | **Nobody** | **← This project** |
-
----
-
-## Nepal context
-
-- **August 2025** — Nepal Cabinet approved [National AI Policy 2082](https://aiassociationnepal.org/national-artificial-intelligence-ai-policy-2082/)
-- **November 2025** — AIAN + Embassy of India hosted "AI for Inclusive Growth: Building Nepal's AI Ready Future" (400+ participants)
-- **February 2026** — [World Bank approved $50M](https://coingeek.com/nepal-secures-50m-for-digitalization-approved-by-world-bank/) Nepal Digital Transformation Project
-- **March 2026** — [Nagarik App at 1.5M+ users](https://en.wikipedia.org/wiki/Nagarik_App); backend intelligence layer remains an open gap
-
----
-
-## Release history
-
-**Current release:** `0.5.0` on PyPI — **37** tests passing on Python 3.10–3.13 (offline synthetic test corpus); seed corpus via `download_corpus()` / `nepal-gov-agent download` (opt-in, five PDFs).
-
-- **0.5.0** — Python 3.10+, `nepal-gov-agent download` and `--version`, CLI defaults to `./nepal_gov_data/`, synthetic eval set found after `pip install`, cited-answer failures are logged instead of swallowed, GitHub Actions CI, offline test suite. See [CHANGELOG](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/CHANGELOG.md).
-- **0.4.1** — Seed corpus URLs pinned to the `v0.4.0` tag.
-
-- **0.4.0** — Polish + honesty pass. Synthetic eval harness with explicit "LLM-generated, not human-validated" labelling at every layer (report header, dataset README, CHANGELOG). Hosted demo at `nepalgov.datacortex.in` (since retired — see note below). Project reframed as a reference implementation; status set to maintenance.
-
-> *Note on the hosted demo:* `nepalgov.datacortex.in` was deployed briefly on Render but retired shortly after. The demo runs cleanly locally (`pip install -e ".[web]" && python web/app.py`); the production deploy hit a SQLite thread-affinity issue in the RAGNav cache layer that requires more work than this maintenance-mode project warrants. The repo and PyPI package are the canonical artifacts.
-- **0.3.0** — Multilingual default embeddings (`multilingual-e5-small`), balanced BM25/vector weights, Nepali query preprocessing, Ollama client for local synthesis.
-- **0.2.0** — `GovAgent` class with `document_qa`, `service_guide`, `corpus_search` workflows via AgentEnsemble pipeline; SQLite session memory.
-- **0.1.x** — `GovRAG` core: hybrid retrieval, adaptive fallback, inline citations, benchmark harness.
-
-## Future work (community)
-
-This project is in maintenance. The directions below are open if a contributor wants to pick one up — no committed timeline from the author:
-
-- Native-speaker review of the synthetic eval set; curated human-validated subset.
-- Real Nepali NLP stack (IndicNLP or Stanza) for tokenization and transliteration handling, replacing the current minimal suffix-stripping.
-- Corpus expansion to ministry circulars 2080–2082 and a structured index over amendments.
-- Voice workflow integration (Bhashini / Bolna) for Nepali-language phone interfaces.
-- Multi-hop reasoning across documents (e.g. "which articles of the Constitution conflict with this draft ordinance?").
-
-Open an issue before starting on anything large so we can coordinate scope.
-
----
-
-## Scope and Limitations
-
-Nepal GovAgent is a **research prototype**. It is not production-ready for government deployment.
-
-The benchmark measures **retrieval quality** — whether the right content appears in the top-k retrieved blocks. It does not measure answer safety, factual correctness, or suitability for official use.
-
-Prerequisites for any .gov deployment that this project does not provide:
-
-- Security audit and penetration testing
-- Data sovereignty controls and legal framework
-- Human oversight layer — every answer reviewed before action
-- Government approval and integration with live systems
-
-This project establishes the retrieval foundation layer. The trust, oversight, and sovereignty layers are separate concerns that must be built on top before any production use.
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/CONTRIBUTING.md) for guidelines.
-
-**Highest priority:** Nepal government document corpus. If you have publicly available PDFs — ministry circulars, SOPs, municipality guidelines — open an issue with links or sources.
-
----
-
-## Built on
-
-| Library | Role | Version |
-|---|---|---|
-| [RAGNav](https://github.com/irfanalidv/RAGNav) | Retrieval, citations, PDF ingestion | `>=0.5.1` |
-| [ragfallback](https://github.com/irfanalidv/ragfallback) | Reliability, fallback, diagnostics | `>=2.0.2` |
-| [AgentEnsemble](https://github.com/irfanalidv/AgentEnsemble) | Orchestration, memory, planning | `>=0.3.0` |
-
-All three are open-source, MIT licensed, and independently usable on PyPI.
-
----
-
-## About
-
-Built by [Irfan Ali](https://www.linkedin.com/in/irfanalidv/) — [GitHub](https://github.com/irfanalidv) | Founder, [DataCortex IQ](https://www.datacortex.in/) | 7+ years in LLM engineering, RAG pipelines, and agentic AI | 11 open-source Python libraries on PyPI | M.Sc. Data Science & AI, IISER Tirupati.
-
-Built in the spirit of AIAN's four pillars: **Data. Infrastructure. Policy. Resources.**
-
----
-
-## License
-
-MIT — free for government, private sector, and academic use. No strings.
-
----
-
-*Working on Nepal's AI infrastructure layer? Open an issue or reach out directly.*
+- [CONTRIBUTING.md](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/CONTRIBUTING.md): setup,
+  tests (`pytest --cov=nepal_gov_agent`), `ruff check`, `ruff format`, `mypy nepal_gov_agent`, and
+  `pre-commit install`.
+- [SECURITY.md](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/SECURITY.md): how to report a
+  vulnerability.
+- [CHANGELOG.md](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/CHANGELOG.md): release history.
+- Cite via [CITATION.cff](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/CITATION.cff)
+  (GitHub's "Cite this repository" button).
+- Built on [RAGNav](https://github.com/irfanalidv/RAGNav) (ingestion, retrieval, citations,
+  fallback) and [AgentEnsemble](https://github.com/irfanalidv/AgentEnsemble) (pipeline, session
+  memory), both MIT and on PyPI. [ragfallback](https://github.com/irfanalidv/ragfallback) is a
+  declared dependency but is not imported by the package today.
+- [MIT License](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/LICENSE). Built by
+  [Irfan Ali](https://github.com/irfanalidv) ([DataCortex IQ](https://www.datacortex.in/)).

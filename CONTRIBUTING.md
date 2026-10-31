@@ -70,8 +70,10 @@ pip install -e ".[dev]"
 
 ### Before submitting a PR
 
-- Run existing tests: `pytest` (builds a tiny synthetic PDF corpus; set `NEPAL_GOV_CORPUS_DIR` to test against the real seed corpus)
+- Install the git hooks once: `pre-commit install` (ruff, ruff-format and hygiene checks)
+- Run the tests with coverage: `pytest --cov=nepal_gov_agent` (builds a tiny synthetic PDF corpus; set `NEPAL_GOV_CORPUS_DIR` to test against the real seed corpus). CI fails below 95%.
 - Lint and format: `ruff check .` and `ruff format --check .`
+- Type check: `mypy nepal_gov_agent`
 - Add tests for any new functionality
 - Keep it simple — this library runs offline on modest hardware, so avoid heavy dependencies
 - Document in English and Nepali where possible
