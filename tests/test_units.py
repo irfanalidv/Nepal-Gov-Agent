@@ -160,3 +160,12 @@ def test_cli_download_subcommand(tmp_path):
     with mock.patch("nepal_gov_agent.corpus.download_corpus") as dl:
         main(["download", "--dest", str(tmp_path), "--force"])
     dl.assert_called_once_with(dest_dir=str(tmp_path), force=True)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [{"fusion": "max"}, {"w_bm25": 0, "w_vec": 0}, {"w_vec": -1}, {"k_final": 0}],
+)
+def test_config_rejects_invalid_values(kwargs):
+    with pytest.raises(ValueError):
+        GovRAGConfig(**kwargs)

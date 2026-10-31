@@ -195,6 +195,8 @@ class GovRAG:
                 one the answer is extractive and no network call is made.
             k_final: Blocks to keep (default ``config.k_final``).
             with_citations: Ask the LLM for ``[[block_id]]`` inline citations.
+                The ``llm`` also writes the query rewrites when retrieval
+                confidence is LOW and QueryFallback kicks in.
             allowed_doc_ids: Restrict retrieval to these RAGNav doc ids
                 (``"pdf:<filename>"``).
 
@@ -214,6 +216,7 @@ class GovRAG:
             w_bm25=cfg.w_bm25,
             w_vec=cfg.w_vec,
             expand_structure=True,
+            fusion=cfg.fusion,
             allowed_doc_ids=allowed_doc_ids,
         )
 
@@ -221,9 +224,12 @@ class GovRAG:
         query_used = q
 
         if retrieval.confidence == ConfidenceLevel.LOW and cfg.max_fallback_attempts > 1:
+            # Query rewrites come from the caller's LLM when one is given. Without
+            # one, RAGNav's offline FakeLLMClient echoes the rewrite prompt, which
+            # only helps when that echo happens to retrieve better.
             fb = QueryFallback(
                 self._retriever,
-                self._llm,
+                llm if llm is not None else self._llm,
                 FallbackConfig(
                     max_attempts=cfg.max_fallback_attempts,
                     retry_on={ConfidenceLevel.LOW},
@@ -237,6 +243,7 @@ class GovRAG:
                 w_bm25=cfg.w_bm25,
                 w_vec=cfg.w_vec,
                 expand_structure=True,
+                fusion=cfg.fusion,
                 allowed_doc_ids=allowed_doc_ids,
             )
             if fb_result.improved:
@@ -318,6 +325,7 @@ class GovRAG:
             w_bm25=self.config.w_bm25,
             w_vec=self.config.w_vec,
             expand_structure=True,
+            fusion=self.config.fusion,
         )
         # Same dict shape as RAGNavRetriever.retrieve_raw, but in rank order.
         return [

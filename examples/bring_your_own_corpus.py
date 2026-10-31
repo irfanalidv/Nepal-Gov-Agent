@@ -1,8 +1,8 @@
 """
 Bring your own corpus: custom retrieval settings and per-document filtering
 ==========================================================================
-Shows    : pointing GovRAG at any folder of PDFs, tuning GovRAGConfig (keyword-heavy
-           weights for legal text), restricting a question to one document with
+Shows    : pointing GovRAG at any folder of PDFs, tuning GovRAGConfig (weighted fusion,
+           keyword-heavy for legal text), restricting a question to one document with
            ``allowed_doc_ids``, and raw ``search`` for building your own UI.
            Also asks a Nepali question against English PDFs.
 Data     : a three-PDF mini corpus generated on the fly (examples/_mini_corpus.py).
@@ -24,6 +24,7 @@ logging.basicConfig(level=logging.WARNING)
 
 work = Path(tempfile.mkdtemp(prefix="nga_byoc_"))
 config = GovRAGConfig(
+    fusion="weighted",  # blend scores; the default "rrf" uses ranks only
     w_bm25=0.7,  # lean on exact legal keywords
     w_vec=0.3,
     k_final=3,

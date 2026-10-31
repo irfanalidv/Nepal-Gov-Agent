@@ -85,3 +85,50 @@ def test_repeated_ask_is_stable(rag: GovRAG):
     assert second.confidence == first.confidence
     assert second.fallback_triggered == first.fallback_triggered
     assert [s["block_id"] for s in second.sources] == [s["block_id"] for s in first.sources]
+
+
+def test_low_confidence_fallback_uses_callers_llm(rag: GovRAG, monkeypatch):
+    import dataclasses
+
+    from ragnav.llm.fake import FakeLLMClient
+    from ragnav.models import ConfidenceLevel
+
+    real_retrieve = rag._retriever.retrieve
+    rewrite = "National AI Centre secretariat"
+
+    def retrieve(query, **kw):
+        res = real_retrieve(query, **kw)
+        if query != rewrite:  # force the original query to look weak
+            res = dataclasses.replace(res, confidence=ConfidenceLevel.LOW, top_score=0.0)
+        return res
+
+    monkeypatch.setattr(rag._retriever, "retrieve", retrieve)
+    prompts: list[str] = []
+
+    class RewritingLLM(FakeLLMClient):
+        def chat(self, *, messages, model=None, temperature=0):
+            prompts.append(messages[-1]["content"])
+            return rewrite
+
+    result = rag.ask("qqqq zzzz", llm=RewritingLLM(), with_citations=False)
+    assert prompts, "QueryFallback should ask the caller's LLM for a rewrite"
+    assert result.fallback_triggered
+    assert result.query_used == rewrite
+    assert "secretariat" in result.answer
+
+
+def test_weighted_fusion_config_is_used(corpus_dir, tmp_path):
+    from conftest import TEST_EMBEDDING_MODEL
+
+    from nepal_gov_agent import GovRAGConfig
+
+    cfg = GovRAGConfig(
+        fusion="weighted",
+        w_bm25=1.0,
+        w_vec=0.0,
+        cache_dir=str(tmp_path / "c"),
+        embedding_model=TEST_EMBEDDING_MODEL,
+    )
+    rag = GovRAG(corpus_dir=corpus_dir, config=cfg)
+    blocks = rag.search("secretariat", k=1)
+    assert "secretariat" in blocks[0]["content"]
