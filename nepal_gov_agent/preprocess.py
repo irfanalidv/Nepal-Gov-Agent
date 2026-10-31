@@ -38,5 +38,4 @@ def preprocess_query(query: str) -> str:
         if q.endswith(suffix):
             q = q[: -len(suffix)].strip()
             break
-    q = re.sub(r"\s+", " ", q).strip()
-    return q
+    return re.sub(r"\s+", " ", q).strip()

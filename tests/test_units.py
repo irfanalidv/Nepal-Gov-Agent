@@ -71,12 +71,14 @@ def test_ollama_chat_posts_and_parses():
 
 
 def test_ollama_unreachable_raises_runtime_error():
-    with mock.patch(
-        "nepal_gov_agent.llm_ollama.requests.post",
-        side_effect=requests.exceptions.ConnectionError("down"),
+    with (
+        mock.patch(
+            "nepal_gov_agent.llm_ollama.requests.post",
+            side_effect=requests.exceptions.ConnectionError("down"),
+        ),
+        pytest.raises(RuntimeError, match="Ollama is not reachable"),
     ):
-        with pytest.raises(RuntimeError, match="Ollama is not reachable"):
-            OllamaClient().chat(messages=[{"role": "user", "content": "hi"}])
+        OllamaClient().chat(messages=[{"role": "user", "content": "hi"}])
 
 
 def test_ollama_embed_not_supported():

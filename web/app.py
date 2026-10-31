@@ -37,6 +37,8 @@ _state: dict[str, Any] = {
     "error": None,
 }
 _boot_lock = asyncio.Lock()
+# Strong references to background tasks; asyncio only keeps weak ones.
+_background_tasks: set[asyncio.Task[None]] = set()
 
 
 def _boot_sync() -> None:
@@ -100,7 +102,9 @@ app = FastAPI(
 
 @app.on_event("startup")
 async def _kick_boot_on_startup() -> None:
-    asyncio.create_task(_ensure_booted())
+    task = asyncio.create_task(_ensure_booted())
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
 
 WEB_DIR = Path(__file__).parent
@@ -151,7 +155,7 @@ async def ask(req: AskRequest) -> AskResponse:
     try:
         await _ensure_booted()
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Boot failed: {exc!r}")
+        raise HTTPException(status_code=500, detail=f"Boot failed: {exc!r}") from exc
 
     t0 = time.time()
     loop = asyncio.get_running_loop()
@@ -159,7 +163,7 @@ async def ask(req: AskRequest) -> AskResponse:
         result = await loop.run_in_executor(_rag_executor, _ask_sync, req.query, req.k)
     except Exception as exc:
         logger.exception("ask failed")
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     elapsed_ms = int((time.time() - t0) * 1000)
 
     sources = [
