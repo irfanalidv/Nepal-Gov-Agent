@@ -13,12 +13,11 @@ from __future__ import annotations
 
 import argparse
 import logging
-import sys
 
 from .synthetic import generate_synthetic_qa
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         prog="python -m nepal_gov_agent.eval.generate",
         description="Generate synthetic QA pairs from the Nepal gov corpus using OpenAI.",
@@ -47,13 +46,13 @@ def main() -> None:
     )
     parser.add_argument("--verbose", "-v", action="store_true")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     try:
         from dotenv import load_dotenv
 
         load_dotenv(".env")
-    except ImportError:
+    except ImportError:  # python-dotenv is optional; env vars still work without it
         pass
 
     logging.basicConfig(
@@ -96,4 +95,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    sys.exit(0)

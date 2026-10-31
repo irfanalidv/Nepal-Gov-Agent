@@ -16,6 +16,8 @@ from pathlib import Path
 from ragnav.ingest.pdf import PdfIngestOptions, ingest_pdf_file
 from ragnav.models import Block, Document
 
+from .exceptions import CorpusNotFoundError, EmptyCorpusError
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,17 +30,23 @@ def ingest_corpus(
     Page-level PDF ingestion via PyMuPDF; legal/graph paths live in RAGNav separately.
 
     Scans only ``corpus_dir`` itself (no subdirectories); use a flat folder e.g. ``Data/*.pdf``.
+    Files are processed in sorted order so block order is deterministic across platforms.
+
+    Raises:
+        CorpusNotFoundError: ``corpus_dir`` does not exist (subclass of ``FileNotFoundError``).
+        EmptyCorpusError: no ``*.pdf`` files, or none of them could be parsed
+            (subclass of ``ValueError``).
     """
     corpus_path = Path(corpus_dir)
     if not corpus_path.exists():
-        raise FileNotFoundError(
+        raise CorpusNotFoundError(
             f"Corpus directory not found: {corpus_dir}\n"
             "Create the directory, add PDF files, and pass the correct path."
         )
 
-    pdf_files = list(corpus_path.glob("*.pdf"))
+    pdf_files = sorted(corpus_path.glob("*.pdf"))
     if not pdf_files:
-        raise ValueError(
+        raise EmptyCorpusError(
             f"No PDF files found in {corpus_dir}\n"
             "Add .pdf files to that folder (not subfolders) and retry."
         )
@@ -78,6 +86,11 @@ def ingest_corpus(
 
     if failed:
         logger.warning("%d document(s) failed to ingest", failed)
+    if not all_blocks:
+        raise EmptyCorpusError(
+            f"None of the {len(pdf_files)} PDF(s) in {corpus_dir} yielded any text "
+            f"({failed} failed to parse). Scanned PDFs need OCR before ingestion."
+        )
     logger.info(
         "Corpus ready: %d documents, %d blocks total",
         len(all_documents),

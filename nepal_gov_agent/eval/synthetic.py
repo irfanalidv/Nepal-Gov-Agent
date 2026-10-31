@@ -24,6 +24,7 @@ Usage:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -31,10 +32,12 @@ import re
 import sys
 import sysconfig
 import unicodedata
-from collections.abc import Iterable
+from collections.abc import Iterator
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+from ..exceptions import CorpusNotFoundError, EmptyCorpusError, MissingDependencyError
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +69,8 @@ def _to_jsonable(pair: SyntheticQAPair) -> dict[str, Any]:
 # Prompt
 # ---------------------------------------------------------------------------
 
-_SYSTEM_PROMPT = """You generate evaluation QA pairs from Nepal government policy and legal documents.
+_SYSTEM_PROMPT = """\
+You generate evaluation QA pairs from Nepal government policy and legal documents.
 
 Rules:
 1. Each question MUST be answerable strictly from the passage provided. No outside knowledge.
@@ -107,8 +111,7 @@ Generate the QA pairs as instructed."""
 def _norm(s: str) -> str:
     """NFC + lowercase + collapse whitespace. Matches preprocess.py spirit."""
     s = unicodedata.normalize("NFC", s or "")
-    s = re.sub(r"\s+", " ", s).strip().lower()
-    return s
+    return re.sub(r"\s+", " ", s).strip().lower()
 
 
 def _all_keywords_present(passage: str, keywords: list[str]) -> bool:
@@ -136,23 +139,27 @@ def _is_meaningful_passage(text: str, min_words: int = 40) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _get_openai_client():
+#: Per-request timeout (seconds) for OpenAI calls; the SDK default is 10 minutes.
+OPENAI_TIMEOUT = 60.0
+
+
+def _get_openai_client(api_key: str | None = None) -> Any:
     try:
-        from openai import OpenAI  # type: ignore
+        from openai import OpenAI
     except ImportError as e:
-        raise RuntimeError(
+        raise MissingDependencyError(
             "openai package not installed. Install with: pip install 'nepal-gov-agent[eval]'"
         ) from e
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError(
+    key = api_key or os.environ.get("OPENAI_API_KEY")
+    if not key:
+        raise MissingDependencyError(
             "OPENAI_API_KEY environment variable not set. "
             "Export your key or pass api_key=... to generate_synthetic_qa."
         )
-    return OpenAI(api_key=api_key)
+    return OpenAI(api_key=key, timeout=OPENAI_TIMEOUT, max_retries=2)
 
 
-def _call_openai(client, model: str, passage: str, doc_name: str, page: int) -> dict[str, Any]:
+def _call_openai(client: Any, model: str, passage: str, doc_name: str, page: int) -> dict[str, Any]:
     """One call, JSON-only response."""
     resp = client.chat.completions.create(
         model=model,
@@ -170,10 +177,14 @@ def _call_openai(client, model: str, passage: str, doc_name: str, page: int) -> 
     )
     content = resp.choices[0].message.content or "{}"
     try:
-        return json.loads(content)
+        data = json.loads(content)
     except json.JSONDecodeError:
         logger.warning("Could not parse JSON from model for %s p.%d", doc_name, page)
         return {"pairs": []}
+    if not isinstance(data, dict):
+        logger.warning("Model returned non-object JSON for %s p.%d", doc_name, page)
+        return {"pairs": []}
+    return data
 
 
 # ---------------------------------------------------------------------------
@@ -181,43 +192,40 @@ def _call_openai(client, model: str, passage: str, doc_name: str, page: int) -> 
 # ---------------------------------------------------------------------------
 
 
-def _iter_passages(corpus_dir: str) -> Iterable[tuple[str, int, str]]:
+def _iter_passages(corpus_dir: str) -> Iterator[tuple[str, int, str]]:
     """
     Yield (doc_name, page_number, page_text) for every page of every PDF
     in corpus_dir. Uses PyMuPDF directly (same library RAGNav's ingest uses)
     to keep this independent of RAGNav's chunking decisions.
     """
-    try:
-        import pymupdf as fitz  # PyMuPDF >= 1.24 (the `fitz` alias is deprecated)
-    except ImportError:
-        try:
-            import fitz  # type: ignore[no-redef]  # older PyMuPDF
-        except ImportError as e:
-            raise RuntimeError("PyMuPDF not installed. pip install pymupdf>=1.26.0") from e
+    import pymupdf  # hard dependency; imported lazily to keep package import light
 
     corpus_path = Path(corpus_dir)
     if not corpus_path.exists():
-        raise FileNotFoundError(f"Corpus directory not found: {corpus_dir}")
+        raise CorpusNotFoundError(f"Corpus directory not found: {corpus_dir}")
 
     pdf_files = sorted(corpus_path.glob("*.pdf"))
     if not pdf_files:
-        raise ValueError(f"No PDFs found in {corpus_dir}")
+        raise EmptyCorpusError(f"No PDFs found in {corpus_dir}")
 
     for pdf_path in pdf_files:
         try:
-            doc = fitz.open(str(pdf_path))
+            doc = pymupdf.open(str(pdf_path))
         except Exception as e:
             logger.warning("Could not open %s: %s", pdf_path.name, e)
             continue
-        for page_num in range(len(doc)):
-            try:
-                page = doc.load_page(page_num)
-                text = page.get_text("text") or ""
-            except Exception as e:
-                logger.warning("Page %d of %s failed: %s", page_num + 1, pdf_path.name, e)
-                continue
-            yield pdf_path.name, page_num + 1, text
-        doc.close()
+        try:
+            for page_num in range(len(doc)):
+                try:
+                    page = doc.load_page(page_num)
+                    text = page.get_text("text") or ""
+                except Exception as e:
+                    logger.warning("Page %d of %s failed: %s", page_num + 1, pdf_path.name, e)
+                    continue
+                yield pdf_path.name, page_num + 1, text
+        finally:
+            # Also runs if the consumer stops early or raises mid-iteration.
+            doc.close()
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +240,9 @@ def generate_synthetic_qa(
     max_pairs_per_doc: int = 20,
     min_passage_words: int = 40,
     resume: bool = True,
+    *,
+    api_key: str | None = None,
+    client: Any | None = None,
 ) -> list[SyntheticQAPair]:
     """
     Generate, validate, and persist synthetic QA pairs.
@@ -243,41 +254,39 @@ def generate_synthetic_qa(
         max_pairs_per_doc: cap to keep generation bounded and per-doc balanced.
         min_passage_words: skip near-empty pages (covers, dividers).
         resume:     skip pages already present in out_path.
+        api_key:    OpenAI key; defaults to the ``OPENAI_API_KEY`` environment variable.
+        client:     Pre-built OpenAI-compatible client (anything exposing
+                    ``chat.completions.create``). Overrides ``api_key``; handy for
+                    tests and for OpenAI-compatible gateways.
 
     Returns:
         Validated pairs. Pairs whose keywords don't appear in source are dropped.
     """
-    client = _get_openai_client()
+    if client is None:
+        client = _get_openai_client(api_key)
 
     out_p = Path(out_path)
     out_p.parent.mkdir(parents=True, exist_ok=True)
 
     already_done: set[tuple[str, int]] = set()
-    if resume and out_p.exists():
-        for line in out_p.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                rec = json.loads(line)
-                already_done.add((rec["expected_doc"], int(rec["source_page"])))
-            except Exception:
-                continue
-        logger.info("Resume: %d pages already covered in %s", len(already_done), out_path)
-
     per_doc_counts: dict[str, int] = {}
     kept: list[SyntheticQAPair] = []
 
-    # Load existing pairs for the resume case so we return a complete list.
+    # Resume: load existing pairs so we skip covered pages and return a complete list.
     if resume and out_p.exists():
-        for line in out_p.read_text(encoding="utf-8").splitlines():
+        for lineno, line in enumerate(out_p.read_text(encoding="utf-8").splitlines(), 1):
             if not line.strip():
                 continue
             try:
                 rec = json.loads(line)
-                kept.append(SyntheticQAPair(**rec))
-                per_doc_counts[rec["expected_doc"]] = per_doc_counts.get(rec["expected_doc"], 0) + 1
-            except Exception:
+                pair = SyntheticQAPair(**rec)
+            except (json.JSONDecodeError, TypeError) as exc:
+                logger.warning("Skipping malformed line %d in %s: %s", lineno, out_path, exc)
                 continue
+            already_done.add((pair.expected_doc, int(pair.source_page)))
+            kept.append(pair)
+            per_doc_counts[pair.expected_doc] = per_doc_counts.get(pair.expected_doc, 0) + 1
+        logger.info("Resume: %d pages already covered in %s", len(already_done), out_path)
 
     with out_p.open("a", encoding="utf-8") as f:
         for doc_name, page_num, text in _iter_passages(corpus_dir):
@@ -349,10 +358,8 @@ def _resolve_eval_path(path: str) -> Path:
     if p.exists() or p.is_absolute():
         return p
     bases = [sysconfig.get_path("data"), sys.prefix]
-    try:
+    with contextlib.suppress(KeyError):
         bases.append(sysconfig.get_path("data", f"{os.name}_user"))
-    except KeyError:
-        pass
     for base in bases:
         if base and (Path(base) / p).exists():
             return Path(base) / p
@@ -373,11 +380,13 @@ def load_synthetic_qa(path: str = "eval_data/synthetic_qa_v1.jsonl") -> list[Syn
             "or `python -m nepal_gov_agent.eval.generate`."
         )
     pairs: list[SyntheticQAPair] = []
-    for line in p.read_text(encoding="utf-8").splitlines():
+    for lineno, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
         if not line.strip():
             continue
-        rec = json.loads(line)
-        pairs.append(SyntheticQAPair(**rec))
+        try:
+            pairs.append(SyntheticQAPair(**json.loads(line)))
+        except (json.JSONDecodeError, TypeError) as exc:
+            raise ValueError(f"{p}:{lineno}: not a valid SyntheticQAPair record ({exc})") from exc
     return pairs
 
 

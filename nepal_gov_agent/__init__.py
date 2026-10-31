@@ -20,9 +20,17 @@ from .benchmark import (
     run_benchmark,
     run_synthetic_benchmark,
 )
-from .config import GovRAGConfig
+from .config import GovAgentConfig, GovRAGConfig
 from .corpus import download_corpus
 from .eval import SyntheticQAPair, generate_synthetic_qa, load_synthetic_qa
+from .exceptions import (
+    CorpusDownloadError,
+    CorpusNotFoundError,
+    EmptyCorpusError,
+    LLMUnavailableError,
+    MissingDependencyError,
+    NepalGovAgentError,
+)
 from .llm_ollama import OllamaClient
 from .preprocess import NEPALI_QUESTION_SUFFIXES, preprocess_query
 from .rag import GovRAG, GovRAGResult
@@ -30,25 +38,31 @@ from .rag import GovRAG, GovRAGResult
 try:
     __version__ = _pkg_version("nepal-gov-agent")
 except PackageNotFoundError:  # pragma: no cover - source tree without install
-    __version__ = "0.5.0"
+    __version__ = "0.6.0"
 
 __all__ = [
-    "__version__",
-    "GovRAG",
-    "GovRAGResult",
-    "GovRAGConfig",
-    "GovAgent",
-    "GovAgentResult",
-    "OllamaClient",
-    "preprocess_query",
     "NEPALI_QUESTION_SUFFIXES",
-    "download_corpus",
-    "run_benchmark",
-    "run_synthetic_benchmark",
     "NEPAL_GOV_QA",
     "BenchmarkResult",
-    # Synthetic eval
+    "CorpusDownloadError",
+    "CorpusNotFoundError",
+    "EmptyCorpusError",
+    "GovAgent",
+    "GovAgentConfig",
+    "GovAgentResult",
+    "GovRAG",
+    "GovRAGConfig",
+    "GovRAGResult",
+    "LLMUnavailableError",
+    "MissingDependencyError",
+    "NepalGovAgentError",
+    "OllamaClient",
     "SyntheticQAPair",
+    "__version__",
+    "download_corpus",
     "generate_synthetic_qa",
     "load_synthetic_qa",
+    "preprocess_query",
+    "run_benchmark",
+    "run_synthetic_benchmark",
 ]
