@@ -22,8 +22,22 @@ from .rag import GovRAG, GovRAGResult
 logger = logging.getLogger(__name__)
 
 
+WORKFLOWS: tuple[str, ...] = ("document_qa", "service_guide", "corpus_search")
+
+
 @dataclass
 class GovAgentResult:
+    """Outcome of one :meth:`GovAgent.run` call.
+
+    Attributes:
+        workflow: Which workflow produced this result.
+        answer: Extractive (or LLM-cited) answer text.
+        steps: Raw per-step outputs, one dict per pipeline agent.
+        sources: Citation dicts (``doc``, ``page``, ``block_id``, ``excerpt`` ...).
+        session_id: Session the turn was stored under.
+        confidence: ``"high"``, ``"medium"`` or ``"low"``.
+    """
+
     workflow: str
     answer: str
     steps: list[dict[str, Any]]
@@ -46,7 +60,7 @@ class _RetrieveAgent(BaseAgent):
 
     def run(self, query: str, **kwargs: Any) -> dict[str, Any]:
         effective = self._rewrite_query(query)
-        k = kwargs.get("k_final", None)
+        k = kwargs.get("k_final")
         result: GovRAGResult = self._rag.ask(effective, k_final=k)
         logger.info(
             "step %s: confidence=%s blocks=%d",
@@ -123,27 +137,37 @@ class GovAgent:
         workflow: str = "document_qa",
         k_final: int | None = None,
     ) -> GovAgentResult:
+        """Run one workflow and append the user/assistant turn to session memory.
+
+        Args:
+            query: Question (Nepali or English) or search text.
+            workflow: ``"document_qa"``, ``"service_guide"`` or ``"corpus_search"``.
+            k_final: Blocks to keep (QA workflows) or to return (``corpus_search``, default 5).
+
+        Raises:
+            ValueError: Unknown ``workflow``. Nothing is written to memory in that case.
+        """
+        if workflow not in WORKFLOWS:
+            raise ValueError(f"Unknown workflow: {workflow!r} (use {', '.join(WORKFLOWS)})")
         self._session.add_messages([{"role": "user", "content": query}])
 
         if workflow == "document_qa":
             result = self._document_qa(query, k_final=k_final)
         elif workflow == "service_guide":
             result = self._service_guide(query, k_final=k_final)
-        elif workflow == "corpus_search":
+        else:  # corpus_search
             result = self._corpus_search(query, k=k_final if k_final is not None else 5)
-        else:
-            raise ValueError(
-                "Unknown workflow: %r (use document_qa, service_guide, corpus_search)" % (workflow,)
-            )
 
         self._session.add_messages([{"role": "assistant", "content": result.answer}])
         return result
 
     @property
     def history(self) -> list[dict[str, Any]]:
+        """All stored messages for this session, oldest first."""
         return self._session.get_messages()
 
     def clear_history(self) -> None:
+        """Delete every stored message for this session."""
         self._session.clear()
 
     def _document_qa(self, query: str, *, k_final: int | None) -> GovAgentResult:
@@ -161,7 +185,7 @@ class GovAgent:
         )
 
     def _service_guide(self, query: str, *, k_final: int | None) -> GovAgentResult:
-        agents = {
+        agents: dict[str, BaseAgent] = {
             "eligibility": _RetrieveAgent(
                 self._rag,
                 name="eligibility",

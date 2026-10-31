@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from typing import Any
 
 from .rag import GovRAG
 
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 # Hand-curated smoke test
 # ---------------------------------------------------------------------------
 
-NEPAL_GOV_QA = [
+NEPAL_GOV_QA: list[dict[str, Any]] = [
     {
         "query": "What is the vision of Nepal's National AI Policy?",
         "expected_keywords": ["ethical", "human-centric", "inclusive", "sustainable"],
@@ -96,7 +97,7 @@ class BenchmarkResult:
     doc_hit_rate: float
     nepali_recall: float
     english_recall: float
-    per_query: list[dict]
+    per_query: list[dict[str, Any]]
     # Provenance — what did we actually evaluate against?
     eval_kind: str = "smoke_test"  # "smoke_test" | "synthetic" | "custom"
     is_synthetic: bool = False
@@ -109,6 +110,13 @@ class BenchmarkResult:
             "synthetic": "SYNTHETIC eval — LLM-generated, NOT human-validated",
             "custom": "Custom eval set",
         }.get(self.eval_kind, self.eval_kind)
+        # run_benchmark buckets every non-"nepali" query as English.
+        has_nepali = any(q.get("language") == "nepali" for q in self.per_query)
+        has_english = any(q.get("language") != "nepali" for q in self.per_query)
+
+        def lang_recall(present: bool, value: float) -> str:
+            # "n/a" instead of a misleading 0.000 when the set has no such queries.
+            return f"{value:.3f}" if present or not self.per_query else "n/a"
 
         lines = [
             "=" * 70,
@@ -125,8 +133,8 @@ class BenchmarkResult:
             f"Recall@5:           {self.recall_at_5:.3f}",
             f"Keyword hit rate:   {self.keyword_hit_rate:.3f}",
             f"Doc hit rate:       {self.doc_hit_rate:.3f}",
-            f"Nepali recall@3:    {self.nepali_recall:.3f}",
-            f"English recall@3:   {self.english_recall:.3f}",
+            f"Nepali recall@3:    {lang_recall(has_nepali, self.nepali_recall)}",
+            f"English recall@3:   {lang_recall(has_english, self.english_recall)}",
             "=" * 70,
         ]
         if self.is_synthetic:
@@ -148,7 +156,7 @@ class BenchmarkResult:
 
 def run_benchmark(
     rag: GovRAG,
-    qa_pairs: list[dict] | None = None,
+    qa_pairs: list[dict[str, Any]] | None = None,
     k_values: list[int] | None = None,
     verbose: bool = True,
     *,
@@ -167,11 +175,22 @@ def run_benchmark(
         eval_kind:  "smoke_test" | "synthetic" | "custom" — labels the report.
         is_synthetic: True if pairs were LLM-generated.
         generator_model: Model name to record in the report header.
-    """
-    pairs = qa_pairs or NEPAL_GOV_QA
-    k_values = k_values or [1, 3, 5]
 
-    per_query: list[dict] = []
+    Per-language recall is reported at k=3, so it is 0.0 when 3 is not in ``k_values``.
+
+    Raises:
+        ValueError: ``qa_pairs`` is an empty list, or ``k_values`` contains k < 1.
+    """
+    if qa_pairs is not None and not qa_pairs:
+        # An empty list used to fall back silently to the smoke test while the
+        # report was labelled with the caller's eval_kind; fail loudly instead.
+        raise ValueError("qa_pairs is empty; pass None to use the built-in smoke test")
+    pairs = NEPAL_GOV_QA if qa_pairs is None else qa_pairs
+    k_values = k_values or [1, 3, 5]
+    if min(k_values) < 1:
+        raise ValueError(f"k_values must all be >= 1, got {k_values}")
+
+    per_query: list[dict[str, Any]] = []
     keyword_hits: list[float] = []
     doc_hits: list[float] = []
     recall_at: dict[int, list[float]] = {k: [] for k in k_values}
@@ -181,7 +200,7 @@ def run_benchmark(
     max_k = max(k_values)
 
     for qa in pairs:
-        query = qa["query"]
+        query = str(qa["query"])
         expected_keywords = [kw.lower() for kw in qa.get("expected_keywords", [])]
         expected_doc = qa.get("expected_doc", "")
         lang = qa.get("language", "english")
@@ -207,13 +226,13 @@ def run_benchmark(
                 hit = False
             recall_at[kk].append(float(hit))
 
-        r3 = recall_at[3][-1] if 3 in recall_at and recall_at[3] else 0.0
+        r3 = recall_at[3][-1] if recall_at.get(3) else 0.0
         if lang == "nepali":
             nepali_recall.append(r3)
         else:
             english_recall.append(r3)
 
-        result = {
+        result: dict[str, Any] = {
             "query": query[:60] + "..." if len(query) > 60 else query,
             "language": lang,
             "keyword_hit": kw_hit,

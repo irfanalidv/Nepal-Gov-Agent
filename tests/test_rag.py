@@ -67,3 +67,21 @@ def test_ask_with_failing_llm_falls_back_and_logs(rag: GovRAG, caplog):
         result = rag.ask("National AI Centre", llm=BrokenLLM())
     assert result.answer
     assert "Cited answer generation failed" in caplog.text
+
+
+def test_search_is_rank_ordered(rag: GovRAG):
+    # Regression: RAGNav's structure expansion sorts blocks into document order;
+    # GovRAG must hand back the best match first.
+    blocks = rag.search("National AI Centre secretariat", k=5)
+    assert "secretariat" in blocks[0]["content"]
+
+
+def test_repeated_ask_is_stable(rag: GovRAG):
+    # Regression: a retrieval-cache hit used to report LOW confidence and re-run
+    # QueryFallback, flipping fallback_triggered on the second identical call.
+    q = "What is the role of the National AI Centre?"
+    first = rag.ask(q)
+    second = rag.ask(q)
+    assert second.confidence == first.confidence
+    assert second.fallback_triggered == first.fallback_triggered
+    assert [s["block_id"] for s in second.sources] == [s["block_id"] for s in first.sources]
