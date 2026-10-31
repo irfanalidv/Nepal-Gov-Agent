@@ -4,6 +4,59 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-10-31
+
+### Fixed
+
+- **Rank order.** RAGNav's structure expansion returns blocks in document order, so
+  `GovRAG.search()`, the extractive answer, `cited_block_ids` and benchmark Recall@1/@3 used
+  "earliest page" instead of "best match". Score order is now restored from the retrieval trace.
+  Synthetic-set Recall@1 on the seed corpus: 0.229 -> 0.490; Recall@3: 0.490 -> 0.604.
+- **Repeated questions.** RAGNav's retrieval cache reported LOW confidence on every cache hit, so a
+  repeated question re-ran QueryFallback and could flip `confidence` / `fallback_triggered`. GovRAG no
+  longer uses that cache (the embedding cache is unchanged); `retrieval.db` is no longer created.
+- `GovAgent.run()` validates the workflow before writing to session memory (an unknown workflow
+  used to leave an orphan user turn).
+- `run_benchmark(qa_pairs=[])` silently ran the smoke test under the caller's label; it now raises
+  `ValueError`. `k_values` below 1 are rejected, and per-language recall prints `n/a` when the eval
+  set has no queries in that language.
+- `ingest_corpus()` raises `EmptyCorpusError` when no PDF yields text instead of building an empty
+  index that fails later; files are processed in sorted order.
+- `download_corpus()` writes through a `.part` file, so an interrupted download no longer leaves a
+  truncated PDF that later runs skip; network/HTTP failures raise `CorpusDownloadError`.
+- `OllamaClient` maps timeouts, HTTP errors (e.g. model not pulled) and malformed replies to
+  `LLMUnavailableError` with actionable messages.
+- Synthetic eval: OpenAI requests time out after 60 s (SDK default is 10 min); malformed resume
+  lines are logged instead of silently dropped; PDFs are closed even if iteration stops early;
+  `load_synthetic_qa()` reports the offending `file:line`.
+- `web/app.py` keeps a reference to its background boot task so it cannot be garbage-collected.
+
+### Added
+
+- `nepal_gov_agent.exceptions`: `NepalGovAgentError`, `CorpusNotFoundError`, `EmptyCorpusError`,
+  `CorpusDownloadError`, `LLMUnavailableError`, `MissingDependencyError`. Each also subclasses the
+  built-in exception raised before (`FileNotFoundError`, `ValueError`, `RuntimeError`).
+- `GovRAGConfig.fusion` (`"rrf"` default, unchanged behaviour; `"weighted"` blends normalised scores
+  using `w_bm25` / `w_vec`, which RRF ignores) and validation of config values.
+- `GovRAG.ask(llm=...)` now also uses that LLM for QueryFallback rewrites (previously always the
+  offline echo stub).
+- `OllamaClient(timeout=...)`; `generate_synthetic_qa(api_key=..., client=...)`;
+  `nepal_gov_agent.eval.generate.main(argv)`. `GovAgentConfig` is exported from the package root.
+- CodeQL workflow, pre-commit config, mypy in CI, coverage gate (95%), CI concurrency.
+- Examples: `citizen_helpdesk.py`, `bring_your_own_corpus.py`, `cited_answers_llm.py` run offline on
+  a generated mini corpus; `quickstart.py` and `benchmark_corpus.py` refreshed.
+
+### Changed
+
+- `download_corpus()` reports progress via the `nepal_gov_agent.corpus` logger instead of `print`
+  (the `download` CLI command still shows it). `OllamaClient.embed()` raises `NotImplementedError`
+  (a `RuntimeError` subclass, as before).
+- CLI exits with status 2 and a one-line message on package errors (missing corpus, failed download).
+- Ruff rule set broadened (SIM, C4, RUF, PTH, RET, PIE); test coverage 66% -> 96%.
+- README rewritten; stale sample outputs replaced with a verified run.
+- Removed `examples/nepali_query.py`, `agent_workflow.py`, `service_guide.py` (covered by the new
+  examples).
+
 ## [0.5.0] - 2026-10-31
 
 ### Added
