@@ -10,10 +10,13 @@ Quick start:
     print(result.sources)
 """
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+
 from .agent import GovAgent, GovAgentResult
 from .benchmark import (
-    BenchmarkResult,
     NEPAL_GOV_QA,
+    BenchmarkResult,
     run_benchmark,
     run_synthetic_benchmark,
 )
@@ -24,9 +27,13 @@ from .llm_ollama import OllamaClient
 from .preprocess import NEPALI_QUESTION_SUFFIXES, preprocess_query
 from .rag import GovRAG, GovRAGResult
 
-__version__ = "0.4.1"
+try:
+    __version__ = _pkg_version("nepal-gov-agent")
+except PackageNotFoundError:  # pragma: no cover - source tree without install
+    __version__ = "0.5.0"
 
 __all__ = [
+    "__version__",
     "GovRAG",
     "GovRAGResult",
     "GovRAGConfig",

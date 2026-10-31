@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from agentensemble.agents.base import BaseAgent
 from agentensemble.memory.sqlite_session import SQLiteSession
@@ -38,7 +38,7 @@ class _RetrieveAgent(BaseAgent):
         rag: GovRAG,
         name: str = "retrieve",
         *,
-        rewrite_query: Optional[Callable[[str], str]] = None,
+        rewrite_query: Callable[[str], str] | None = None,
     ) -> None:
         super().__init__(name=name, tools=[], max_iterations=1)
         self._rag = rag
@@ -121,7 +121,7 @@ class GovAgent:
         query: str,
         *,
         workflow: str = "document_qa",
-        k_final: Optional[int] = None,
+        k_final: int | None = None,
     ) -> GovAgentResult:
         self._session.add_messages([{"role": "user", "content": query}])
 
@@ -133,8 +133,7 @@ class GovAgent:
             result = self._corpus_search(query, k=k_final if k_final is not None else 5)
         else:
             raise ValueError(
-                "Unknown workflow: %r (use document_qa, service_guide, corpus_search)"
-                % (workflow,)
+                "Unknown workflow: %r (use document_qa, service_guide, corpus_search)" % (workflow,)
             )
 
         self._session.add_messages([{"role": "assistant", "content": result.answer}])
@@ -147,9 +146,7 @@ class GovAgent:
     def clear_history(self) -> None:
         self._session.clear()
 
-    def _document_qa(
-        self, query: str, *, k_final: Optional[int]
-    ) -> GovAgentResult:
+    def _document_qa(self, query: str, *, k_final: int | None) -> GovAgentResult:
         agent = _RetrieveAgent(self._rag, name="qa")
         step_result = agent.run(query, k_final=k_final)
         meta = step_result["metadata"]
@@ -163,9 +160,7 @@ class GovAgent:
             confidence=str(meta.get("confidence", "low")),
         )
 
-    def _service_guide(
-        self, query: str, *, k_final: Optional[int]
-    ) -> GovAgentResult:
+    def _service_guide(self, query: str, *, k_final: int | None) -> GovAgentResult:
         agents = {
             "eligibility": _RetrieveAgent(
                 self._rag,
@@ -175,8 +170,7 @@ class GovAgent:
             "procedure": _RetrieveAgent(
                 self._rag,
                 name="procedure",
-                rewrite_query=lambda q: "What are the steps and documents required for: "
-                + q,
+                rewrite_query=lambda q: "What are the steps and documents required for: " + q,
             ),
         }
 
@@ -197,18 +191,9 @@ class GovAgent:
         eligibility_answer = steps[0]["result"] if steps else ""
         procedure_answer = steps[1]["result"] if len(steps) > 1 else ""
 
-        answer = (
-            "**Eligibility**\n"
-            + eligibility_answer
-            + "\n\n**Steps**\n"
-            + procedure_answer
-        )
+        answer = "**Eligibility**\n" + eligibility_answer + "\n\n**Steps**\n" + procedure_answer
 
-        final_conf = (
-            str(steps[-1].get("metadata", {}).get("confidence", "low"))
-            if steps
-            else "low"
-        )
+        final_conf = str(steps[-1].get("metadata", {}).get("confidence", "low")) if steps else "low"
 
         return GovAgentResult(
             workflow="service_guide",

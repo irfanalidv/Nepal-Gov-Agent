@@ -11,3 +11,9 @@ dist/
 __pycache__/
 .pytest_cache/
 benchmark_results.txt
+.venv/
+venv/
+build/
+.ruff_cache/
+coverage.xml
+.coverage

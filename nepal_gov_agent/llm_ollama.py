@@ -10,7 +10,7 @@ Requires Ollama running locally (``ollama serve``) and a pulled model, e.g.:
 
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
 import requests
 
@@ -30,7 +30,7 @@ class OllamaClient:
         self,
         *,
         messages: list[dict[str, str]],
-        model: Optional[str] = None,
+        model: str | None = None,
         temperature: float = 0,
     ) -> str:
         try:
@@ -57,7 +57,7 @@ class OllamaClient:
         self,
         *,
         inputs: Iterable[str],
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> list[list[float]]:
         raise RuntimeError(
             "OllamaClient does not provide embeddings; GovRAG uses "

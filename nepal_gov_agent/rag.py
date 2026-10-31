@@ -14,7 +14,7 @@ import logging
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ragnav.answering.inline_citations import CitedAnswer, answer_with_inline_citations
 from ragnav.cache.sqlite_cache import (
@@ -26,8 +26,8 @@ from ragnav.cache.sqlite_cache import (
 from ragnav.llm.base import LLMClient
 from ragnav.llm.fake import FakeLLMClient
 from ragnav.models import Block, ConfidenceLevel
-from ragnav.retrieval.fallback import FallbackConfig, QueryFallback
 from ragnav.retrieval import RAGNavIndex, RAGNavRetriever
+from ragnav.retrieval.fallback import FallbackConfig, QueryFallback
 
 from .config import DEFAULT_RAG_CONFIG, GovRAGConfig
 from .ingest import ingest_corpus
@@ -139,10 +139,10 @@ class GovRAG:
         self,
         query: str,
         *,
-        llm: Optional[LLMClient] = None,
-        k_final: Optional[int] = None,
+        llm: LLMClient | None = None,
+        k_final: int | None = None,
         with_citations: bool = True,
-        allowed_doc_ids: Optional[set[str]] = None,
+        allowed_doc_ids: set[str] | None = None,
     ) -> GovRAGResult:
         cfg = self.config
         k = k_final or cfg.k_final
@@ -215,7 +215,13 @@ class GovRAG:
                 )
                 answer = cited.answer
                 cited_ids = cited.cited_block_ids
-            except Exception:
+            except Exception as exc:
+                # Keep serving an extractive answer, but never fail silently.
+                logger.warning(
+                    "Cited answer generation failed (%s: %s); returning extractive answer",
+                    type(exc).__name__,
+                    exc,
+                )
                 answer = self._simple_answer(q, blocks)
                 cited_ids = tuple(b.block_id for b in blocks[:3])
         else:

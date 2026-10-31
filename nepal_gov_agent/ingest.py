@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from ragnav.ingest.pdf import PdfIngestOptions, ingest_pdf_file
 from ragnav.models import Block, Document
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 def ingest_corpus(
     corpus_dir: str,
     *,
-    max_pages_per_doc: Optional[int] = None,
+    max_pages_per_doc: int | None = None,
 ) -> tuple[list[Document], list[Block]]:
     """
     Page-level PDF ingestion via PyMuPDF; legal/graph paths live in RAGNav separately.

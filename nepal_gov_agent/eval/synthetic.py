@@ -28,10 +28,13 @@ import json
 import logging
 import os
 import re
+import sys
+import sysconfig
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SyntheticQAPair:
@@ -99,6 +103,7 @@ Generate the QA pairs as instructed."""
 # Validation
 # ---------------------------------------------------------------------------
 
+
 def _norm(s: str) -> str:
     """NFC + lowercase + collapse whitespace. Matches preprocess.py spirit."""
     s = unicodedata.normalize("NFC", s or "")
@@ -129,6 +134,7 @@ def _is_meaningful_passage(text: str, min_words: int = 40) -> bool:
 # ---------------------------------------------------------------------------
 # OpenAI client (lazy import, optional dep)
 # ---------------------------------------------------------------------------
+
 
 def _get_openai_client():
     try:
@@ -174,6 +180,7 @@ def _call_openai(client, model: str, passage: str, doc_name: str, page: int) -> 
 # Passage iteration over the corpus
 # ---------------------------------------------------------------------------
 
+
 def _iter_passages(corpus_dir: str) -> Iterable[tuple[str, int, str]]:
     """
     Yield (doc_name, page_number, page_text) for every page of every PDF
@@ -181,11 +188,12 @@ def _iter_passages(corpus_dir: str) -> Iterable[tuple[str, int, str]]:
     to keep this independent of RAGNav's chunking decisions.
     """
     try:
-        import fitz  # PyMuPDF
-    except ImportError as e:
-        raise RuntimeError(
-            "PyMuPDF not installed. pip install pymupdf>=1.26.0"
-        ) from e
+        import pymupdf as fitz  # PyMuPDF >= 1.24 (the `fitz` alias is deprecated)
+    except ImportError:
+        try:
+            import fitz  # type: ignore[no-redef]  # older PyMuPDF
+        except ImportError as e:
+            raise RuntimeError("PyMuPDF not installed. pip install pymupdf>=1.26.0") from e
 
     corpus_path = Path(corpus_dir)
     if not corpus_path.exists():
@@ -215,6 +223,7 @@ def _iter_passages(corpus_dir: str) -> Iterable[tuple[str, int, str]]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def generate_synthetic_qa(
     corpus_dir: str = "Data/",
@@ -253,9 +262,7 @@ def generate_synthetic_qa(
                 already_done.add((rec["expected_doc"], int(rec["source_page"])))
             except Exception:
                 continue
-        logger.info(
-            "Resume: %d pages already covered in %s", len(already_done), out_path
-        )
+        logger.info("Resume: %d pages already covered in %s", len(already_done), out_path)
 
     per_doc_counts: dict[str, int] = {}
     kept: list[SyntheticQAPair] = []
@@ -268,9 +275,7 @@ def generate_synthetic_qa(
             try:
                 rec = json.loads(line)
                 kept.append(SyntheticQAPair(**rec))
-                per_doc_counts[rec["expected_doc"]] = (
-                    per_doc_counts.get(rec["expected_doc"], 0) + 1
-                )
+                per_doc_counts[rec["expected_doc"]] = per_doc_counts.get(rec["expected_doc"], 0) + 1
             except Exception:
                 continue
 
@@ -294,16 +299,16 @@ def generate_synthetic_qa(
                 lang = str(raw.get("language", "")).lower().strip()
                 q = str(raw.get("query", "")).strip()
                 kws = [
-                    str(k).strip()
-                    for k in (raw.get("expected_keywords") or [])
-                    if str(k).strip()
+                    str(k).strip() for k in (raw.get("expected_keywords") or []) if str(k).strip()
                 ]
                 if lang not in {"english", "nepali"} or not q or not kws:
                     continue
                 if not _all_keywords_present(text, kws):
                     logger.debug(
                         "Dropped pair (kw not in source) %s p.%d lang=%s",
-                        doc_name, page_num, lang,
+                        doc_name,
+                        page_num,
+                        lang,
                     )
                     continue
 
@@ -326,14 +331,41 @@ def generate_synthetic_qa(
 
     logger.info(
         "Generation done: %d pairs across %d documents (saved to %s)",
-        len(kept), len(per_doc_counts), out_path,
+        len(kept),
+        len(per_doc_counts),
+        out_path,
     )
     return kept
 
 
-def load_synthetic_qa(path: str = "eval_data/synthetic_qa_v1.jsonl") -> list[SyntheticQAPair]:
-    """Load a previously-generated synthetic QA set."""
+def _resolve_eval_path(path: str) -> Path:
+    """Resolve ``path``; for relative paths also look in the install's data dir.
+
+    The wheel ships ``eval_data/`` as setuptools *data-files*, which land under
+    ``sys.prefix`` (or the user base for ``pip install --user``), not the CWD.
+    Falling back there makes ``benchmark --synthetic`` work right after ``pip install``.
+    """
     p = Path(path)
+    if p.exists() or p.is_absolute():
+        return p
+    bases = [sysconfig.get_path("data"), sys.prefix]
+    try:
+        bases.append(sysconfig.get_path("data", f"{os.name}_user"))
+    except KeyError:
+        pass
+    for base in bases:
+        if base and (Path(base) / p).exists():
+            return Path(base) / p
+    return p
+
+
+def load_synthetic_qa(path: str = "eval_data/synthetic_qa_v1.jsonl") -> list[SyntheticQAPair]:
+    """Load a previously-generated synthetic QA set.
+
+    Relative paths are tried against the CWD first, then the package's installed
+    data directory (where ``pip install`` places ``eval_data/synthetic_qa_v1.jsonl``).
+    """
+    p = _resolve_eval_path(path)
     if not p.exists():
         raise FileNotFoundError(
             f"Synthetic QA file not found: {path}\n"

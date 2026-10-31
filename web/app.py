@@ -16,7 +16,7 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -102,6 +102,7 @@ app = FastAPI(
 async def _kick_boot_on_startup() -> None:
     asyncio.create_task(_ensure_booted())
 
+
 WEB_DIR = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
@@ -115,7 +116,7 @@ class AskRequest(BaseModel):
 class Source(BaseModel):
     doc: str
     page: Any
-    heading: Optional[str] = None
+    heading: str | None = None
     excerpt: str
 
 
@@ -155,9 +156,7 @@ async def ask(req: AskRequest) -> AskResponse:
     t0 = time.time()
     loop = asyncio.get_running_loop()
     try:
-        result = await loop.run_in_executor(
-            _rag_executor, _ask_sync, req.query, req.k
-        )
+        result = await loop.run_in_executor(_rag_executor, _ask_sync, req.query, req.k)
     except Exception as exc:
         logger.exception("ask failed")
         raise HTTPException(status_code=500, detail=str(exc))

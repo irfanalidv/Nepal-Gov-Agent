@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 # Boot
 # ---------------------------------------------------------------------------
 
+
 def _boot() -> tuple[GovRAG, GovAgent]:
     """Initialize RAG + agent once. Embeddings cached in CACHE_DIR."""
     corpus_dir = os.environ.get("NGA_CORPUS_DIR", "").strip()
@@ -270,7 +271,8 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=7860)
     parser.add_argument(
-        "--share", action="store_true",
+        "--share",
+        action="store_true",
         help="Create a public gradio.live tunnel (local dev only)",
     )
     args = parser.parse_args()

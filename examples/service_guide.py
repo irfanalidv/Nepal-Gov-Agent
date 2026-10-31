@@ -3,19 +3,19 @@ GovAgent service_guide workflow
 ===============================
 Problem  : Multi-step service queries (eligibility + procedure) need separate retrieval passes.
 Module   : nepal_gov_agent.agent.GovAgent
-Dataset  : Nepal government PDFs (Data/ folder — included in repo)
+Dataset  : Nepal government seed PDFs (downloaded by download_corpus())
 Install  : pip install nepal-gov-agent
 Env vars : NONE
 """
 
 import logging
 
-from nepal_gov_agent import GovRAG
+from nepal_gov_agent import GovRAG, download_corpus
 from nepal_gov_agent.agent import GovAgent
 
 logging.basicConfig(level=logging.INFO)
 
-rag = GovRAG(corpus_dir="Data/")
+rag = GovRAG(corpus_dir=download_corpus())
 agent = GovAgent(rag=rag, session_id="service_guide_demo")
 
 result = agent.run(

@@ -26,9 +26,7 @@ SEED_CORPUS: list[str] = [
 ]
 
 # Pinned tag — PDFs removed from main branch; seed files remain on this release tree.
-RAW_BASE_URL = (
-    "https://raw.githubusercontent.com/irfanalidv/Nepal-Gov-Agent/v0.4.0/Data/"
-)
+RAW_BASE_URL = "https://raw.githubusercontent.com/irfanalidv/Nepal-Gov-Agent/v0.4.0/Data/"
 
 
 def download_corpus(dest_dir: str = "./nepal_gov_data/", force: bool = False) -> str:
@@ -53,8 +51,7 @@ def download_corpus(dest_dir: str = "./nepal_gov_data/", force: bool = False) ->
     session.headers.update(
         {
             "User-Agent": (
-                "nepal-gov-agent-corpus-download/1.0 "
-                "(https://pypi.org/project/nepal-gov-agent/)"
+                "nepal-gov-agent-corpus-download/1.0 (https://pypi.org/project/nepal-gov-agent/)"
             )
         }
     )
@@ -76,7 +73,5 @@ def download_corpus(dest_dir: str = "./nepal_gov_data/", force: bool = False) ->
         print(f"   ✅ Downloaded: {filename} ({size_kb} KB)")
 
     print(f"\n✅ Seed corpus ready — {len(SEED_CORPUS)} documents in {abs_dest}")
-    print(
-        "💡 To use your own PDFs, pass any folder to GovRAG(corpus_dir=...)\n"
-    )
+    print("💡 To use your own PDFs, pass any folder to GovRAG(corpus_dir=...)\n")
     return abs_dest

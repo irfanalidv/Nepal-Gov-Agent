@@ -6,6 +6,7 @@ Usage:
     nepal-gov-agent ask "नागरिकता नवीकरण गर्न के चाहिन्छ?"
     nepal-gov-agent agent "How do I renew my citizenship?"
     nepal-gov-agent agent "..." --workflow service_guide --session my_session_id
+    nepal-gov-agent download
     nepal-gov-agent benchmark
     nepal-gov-agent stats
 """
@@ -16,21 +17,28 @@ import argparse
 import logging
 import sys
 
+# Same folder ``download_corpus()`` / ``nepal-gov-agent download`` write to.
+DEFAULT_CORPUS_DIR = "./nepal_gov_data/"
+CORPUS_HELP = "Folder of PDFs (default: ./nepal_gov_data/, filled by `nepal-gov-agent download`)"
 
-def main() -> None:
+
+def main(argv: list[str] | None = None) -> None:
+    from . import __version__
+
     parser = argparse.ArgumentParser(
         prog="nepal-gov-agent",
         description="Agentic AI for Nepal government documents",
     )
+    parser.add_argument("--version", action="version", version=f"nepal-gov-agent {__version__}")
     subparsers = parser.add_subparsers(dest="command")
 
     ask_parser = subparsers.add_parser("ask", help="Ask a question")
     ask_parser.add_argument("query", help="Question in Nepali or English")
-    ask_parser.add_argument("--corpus", default="Data/", help="Corpus directory")
+    ask_parser.add_argument("--corpus", default=DEFAULT_CORPUS_DIR, help=CORPUS_HELP)
     ask_parser.add_argument("--k", type=int, default=5, help="Number of blocks to retrieve")
 
     bench_parser = subparsers.add_parser("benchmark", help="Run retrieval benchmark")
-    bench_parser.add_argument("--corpus", default="Data/", help="Corpus directory")
+    bench_parser.add_argument("--corpus", default=DEFAULT_CORPUS_DIR, help=CORPUS_HELP)
     bench_parser.add_argument(
         "--synthetic",
         action="store_true",
@@ -42,8 +50,12 @@ def main() -> None:
         help="Path to synthetic QA JSONL (used with --synthetic)",
     )
 
+    dl_parser = subparsers.add_parser("download", help="Download the seed corpus PDFs")
+    dl_parser.add_argument("--dest", default=DEFAULT_CORPUS_DIR, help="Destination folder")
+    dl_parser.add_argument("--force", action="store_true", help="Re-download existing files")
+
     stats_parser = subparsers.add_parser("stats", help="Show corpus statistics")
-    stats_parser.add_argument("--corpus", default="Data/", help="Corpus directory")
+    stats_parser.add_argument("--corpus", default=DEFAULT_CORPUS_DIR, help=CORPUS_HELP)
 
     agent_parser = subparsers.add_parser("agent", help="Run GovAgent workflow")
     agent_parser.add_argument("query", help="Question or search text")
@@ -54,7 +66,7 @@ def main() -> None:
         help="document_qa | service_guide | corpus_search",
     )
     agent_parser.add_argument("--session", default="default", help="Session id for memory")
-    agent_parser.add_argument("--corpus", default="Data/", help="Corpus directory")
+    agent_parser.add_argument("--corpus", default=DEFAULT_CORPUS_DIR, help=CORPUS_HELP)
     agent_parser.add_argument(
         "--k",
         type=int,
@@ -62,7 +74,7 @@ def main() -> None:
         help="k_final for QA / k for corpus_search (defaults: RAG config / 5)",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.command == "ask":
         logging.basicConfig(level=logging.INFO)
@@ -104,6 +116,11 @@ def main() -> None:
             print("\nRunning smoke-test benchmark (7 hand-curated questions)...\n")
             result = run_benchmark(rag, verbose=True)
         print("\n" + result.report())
+
+    elif args.command == "download":
+        from .corpus import download_corpus
+
+        download_corpus(dest_dir=args.dest, force=args.force)
 
     elif args.command == "stats":
         logging.basicConfig(level=logging.WARNING)

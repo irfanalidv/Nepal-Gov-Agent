@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .rag import GovRAG
 
@@ -86,6 +85,7 @@ NEPAL_GOV_QA = [
 # Result type
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BenchmarkResult:
     total_queries: int
@@ -98,16 +98,16 @@ class BenchmarkResult:
     english_recall: float
     per_query: list[dict]
     # Provenance — what did we actually evaluate against?
-    eval_kind: str = "smoke_test"   # "smoke_test" | "synthetic" | "custom"
+    eval_kind: str = "smoke_test"  # "smoke_test" | "synthetic" | "custom"
     is_synthetic: bool = False
-    generator_model: Optional[str] = None
+    generator_model: str | None = None
     notes: list[str] = field(default_factory=list)
 
     def report(self) -> str:
         header_label = {
             "smoke_test": "Hand-curated smoke test (7 questions)",
-            "synthetic":  "SYNTHETIC eval — LLM-generated, NOT human-validated",
-            "custom":     "Custom eval set",
+            "synthetic": "SYNTHETIC eval — LLM-generated, NOT human-validated",
+            "custom": "Custom eval set",
         }.get(self.eval_kind, self.eval_kind)
 
         lines = [
@@ -145,15 +145,16 @@ class BenchmarkResult:
 # Runner
 # ---------------------------------------------------------------------------
 
+
 def run_benchmark(
     rag: GovRAG,
-    qa_pairs: Optional[list[dict]] = None,
-    k_values: Optional[list[int]] = None,
+    qa_pairs: list[dict] | None = None,
+    k_values: list[int] | None = None,
     verbose: bool = True,
     *,
     eval_kind: str = "smoke_test",
     is_synthetic: bool = False,
-    generator_model: Optional[str] = None,
+    generator_model: str | None = None,
 ) -> BenchmarkResult:
     """
     Run retrieval benchmark against a list of QA pairs.
@@ -187,9 +188,7 @@ def run_benchmark(
 
         blocks = rag.search(query, k=max_k)
         retrieved_texts = [b.get("content", "").lower() for b in blocks]
-        retrieved_docs = [
-            (b.get("doc_id") or "").replace("pdf:", "", 1) for b in blocks
-        ]
+        retrieved_docs = [(b.get("doc_id") or "").replace("pdf:", "", 1) for b in blocks]
 
         if expected_keywords:
             kw_hit = any(kw in text for kw in expected_keywords for text in retrieved_texts)
@@ -197,7 +196,7 @@ def run_benchmark(
             kw_hit = False
         keyword_hits.append(float(kw_hit))
 
-        doc_hit = any(expected_doc in doc_id for doc_id in retrieved_docs)
+        doc_hit = bool(expected_doc) and any(expected_doc in doc_id for doc_id in retrieved_docs)
         doc_hits.append(float(doc_hit))
 
         for kk in k_values:

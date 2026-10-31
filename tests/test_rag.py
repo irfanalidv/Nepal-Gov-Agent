@@ -38,4 +38,32 @@ def test_search_key_structure(rag: GovRAG):
 def test_stats(rag: GovRAG):
     stats = rag.stats
     assert stats["documents"] >= 1
-    assert stats["blocks"] >= 10
+    assert stats["blocks"] >= 3
+
+
+def test_ask_with_llm_uses_cited_answer(rag: GovRAG):
+    from ragnav.llm.fake import FakeLLMClient
+
+    first = rag.search("National AI Centre", k=1)[0]["block_id"]
+
+    class CitingLLM(FakeLLMClient):
+        def chat(self, *, messages, model=None, temperature=0):
+            # Echoed label form is normalized by ragnav >= 0.5.1.
+            return f"The centre coordinates AI work [[BLOCK_ID={first}]]."
+
+    result = rag.ask("National AI Centre", llm=CitingLLM())
+    assert result.cited_block_ids == (first,)
+    assert f"[[{first}]]" in result.answer
+
+
+def test_ask_with_failing_llm_falls_back_and_logs(rag: GovRAG, caplog):
+    from ragnav.llm.fake import FakeLLMClient
+
+    class BrokenLLM(FakeLLMClient):
+        def chat(self, *, messages, model=None, temperature=0):
+            raise RuntimeError("rate limited")
+
+    with caplog.at_level("WARNING", logger="nepal_gov_agent.rag"):
+        result = rag.ask("National AI Centre", llm=BrokenLLM())
+    assert result.answer
+    assert "Cited answer generation failed" in caplog.text

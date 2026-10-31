@@ -14,9 +14,9 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-from nepal_gov_agent import GovRAG, run_benchmark
+from nepal_gov_agent import GovRAG, download_corpus, run_benchmark
 
-rag = GovRAG(corpus_dir="Data/")
+rag = GovRAG(corpus_dir=download_corpus())
 results = run_benchmark(rag, verbose=True)
 
 with open("benchmark_results.txt", "w", encoding="utf-8") as f:

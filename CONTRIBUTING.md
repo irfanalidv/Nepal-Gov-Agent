@@ -26,7 +26,7 @@ This is the highest priority. We need publicly available government documents to
 - Municipality service guidelines
 - Nagarik App service documentation
 
-If you have access to any of these in PDF or text form and they are publicly available, open an issue or submit a PR adding them to `corpus/raw/`.
+If you have access to any of these in PDF or text form and they are publicly available, open an issue with links to the source. PDFs are not committed to the repository (see `Data/README.md`); seed documents are fetched with `download_corpus()`.
 
 ### 2. Nepali language test cases
 We need question-answer pairs in both Nepali (Devanagari) and English to evaluate retrieval quality:
@@ -36,7 +36,7 @@ Question: नागरिकता नवीकरण गर्न के चा
 Expected source: Ministry of Home Affairs circular, section X
 ```
 
-Add test cases to `tests/nepali_qa.json`.
+Add hand-curated cases to `NEPAL_GOV_QA` in `nepal_gov_agent/benchmark.py`, or as JSONL in the `eval_data/` format (see `eval_data/README.md`).
 
 ### 3. Hardware testing
 Nepal's government infrastructure runs on modest hardware. We need people to test the library on:
@@ -70,7 +70,8 @@ pip install -e ".[dev]"
 
 ### Before submitting a PR
 
-- Run existing tests: `pytest tests/`
+- Run existing tests: `pytest` (builds a tiny synthetic PDF corpus; set `NEPAL_GOV_CORPUS_DIR` to test against the real seed corpus)
+- Lint and format: `ruff check .` and `ruff format --check .`
 - Add tests for any new functionality
 - Keep it simple — this library runs offline on modest hardware, so avoid heavy dependencies
 - Document in English and Nepali where possible

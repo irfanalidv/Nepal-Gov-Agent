@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "nepal-gov-agent"
+abstract: "Agentic RAG over Nepal government policy and legal documents: offline-capable, Nepali + English, hybrid retrieval with citations."
+authors:
+  - family-names: Ali
+    given-names: Irfan
+version: "0.5.0"
+date-released: "2026-10-31"
+license: MIT
+repository-code: "https://github.com/irfanalidv/Nepal-Gov-Agent"
+url: "https://pypi.org/project/nepal-gov-agent/"

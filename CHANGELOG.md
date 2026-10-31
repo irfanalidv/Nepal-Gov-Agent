@@ -1,5 +1,42 @@
 # Changelog
 
+All notable changes to this project are documented here.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.5.0] - 2026-10-31
+
+### Added
+
+- `nepal-gov-agent download [--dest DIR] [--force]` CLI command and `nepal-gov-agent --version`.
+- GitHub Actions CI (`tests.yml`): ruff lint + format check and pytest on Python 3.10–3.13.
+- Offline test suite: tests build a small synthetic PDF corpus with PyMuPDF instead of relying on
+  `Data/*.pdf` (which is no longer in git). Set `NEPAL_GOV_CORPUS_DIR` to run against the real seed
+  corpus. New unit tests cover the CLI, config, query preprocessing, `OllamaClient` and
+  `download_corpus` (HTTP mocked), synthetic-eval loading and report labelling, and cited answers.
+- SECURITY.md, CODE_OF_CONDUCT.md, issue/PR templates, Dependabot, CITATION.cff.
+
+### Changed
+
+- **Python 3.10+ is now required** (3.9 dropped; 3.13 added).
+- CLI `--corpus` now defaults to `./nepal_gov_data/` (where `download_corpus()` writes) instead of
+  `Data/`, which no longer contains PDFs. Examples now call `download_corpus()` for the same reason.
+- `__version__` is read from package metadata (`importlib.metadata`).
+- Requires `ragnav>=0.5.1`, which fixes cited answers being rejected when the LLM writes
+  `[[BLOCK_ID=<id>]]`.
+- Packaging: `setuptools>=77`, PEP 639 license metadata, full project URLs, `dev` extra now has
+  `build`/`twine` (and drops unused `black`; Ruff is the formatter).
+
+### Fixed
+
+- `GovRAG.ask(..., llm=...)` no longer swallows LLM / citation errors silently: it logs a warning
+  and returns the extractive answer.
+- `load_synthetic_qa()` / `run_synthetic_benchmark()` / `benchmark --synthetic` now find the
+  bundled `eval_data/synthetic_qa_v1.jsonl` after `pip install` (it is installed under the
+  environment's data directory, not the CWD).
+- Benchmark `doc_hit` no longer counts a hit when a QA pair has no `expected_doc`.
+- Synthetic-eval passage extraction imports `pymupdf` instead of the deprecated `fitz` alias.
+
 ## v0.4.1
 
 - Pin `download_corpus()` URLs to the `v0.4.0` git tag so seed PDFs remain reachable after their removal from `main`.

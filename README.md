@@ -1,13 +1,21 @@
+<div align="center">
+
 # Nepal GovAgent
 
-> Reference RAG implementation over Nepal's policy and legal document corpus. Hybrid retrieval (BM25 + multilingual embeddings) with inline citations, agentic workflows, and offline-capable defaults. Built on [RAGNav](https://pypi.org/project/ragnav/), [ragfallback](https://pypi.org/project/ragfallback/), and [AgentEnsemble](https://pypi.org/project/agentensemble/).
+**Agentic RAG over Nepal's government policy and legal documents: offline-capable, Nepali + English, hybrid retrieval with citations.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://img.shields.io/pypi/v/nepal-gov-agent.svg)](https://pypi.org/project/nepal-gov-agent/)
+[![Python](https://img.shields.io/pypi/pyversions/nepal-gov-agent.svg)](https://pypi.org/project/nepal-gov-agent/)
+[![Tests](https://github.com/irfanalidv/Nepal-Gov-Agent/actions/workflows/tests.yml/badge.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent/actions/workflows/tests.yml)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/nepal-gov-agent?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/nepal-gov-agent)
-[![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Status](https://img.shields.io/badge/status-maintenance-blue.svg)](https://github.com/irfanalidv/Nepal-Gov-Agent#status)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/irfanalidv/Nepal-Gov-Agent/blob/main/examples/Nepal_GovAgent_Demo.ipynb)
+
+</div>
+
+> Reference RAG implementation over Nepal's policy and legal document corpus. Hybrid retrieval (BM25 + multilingual embeddings) with inline citations, agentic workflows, and offline-capable defaults. Built on [RAGNav](https://pypi.org/project/ragnav/), [ragfallback](https://pypi.org/project/ragfallback/), and [AgentEnsemble](https://pypi.org/project/agentensemble/).
 
 ---
 
@@ -31,14 +39,21 @@ This project is that worked example. It is not the entire answer to Nepal's [Nat
 
 ## Install
 
+Requires **Python 3.10+**.
+
 ```bash
 pip install nepal-gov-agent
+nepal-gov-agent download          # fetch the five seed PDFs into ./nepal_gov_data/
 ```
 
-For answer generation with citations (optional):
+Optional extras:
+
 ```bash
-pip install nepal-gov-agent[mistral]   # Mistral API
-pip install nepal-gov-agent[ollama]    # Local Ollama
+pip install "nepal-gov-agent[mistral]"   # Mistral API client for cited answers
+pip install "nepal-gov-agent[ollama]"    # marker extra; run Ollama locally (OllamaClient)
+pip install "nepal-gov-agent[eval]"      # OpenAI client for synthetic eval generation
+pip install "nepal-gov-agent[web]"       # FastAPI frontend (python web/app.py from a clone)
+pip install "nepal-gov-agent[dev]"       # pytest, ruff, build, twine
 ```
 
 ---
@@ -318,13 +333,16 @@ python -m nepal_gov_agent.eval.generate --corpus ./nepal_gov_data/ --max-per-doc
 nepal-gov-agent benchmark --corpus ./nepal_gov_data/ --synthetic
 ```
 
-The report header explicitly labels the result as `SYNTHETIC eval — LLM-generated, NOT human-validated`, and ships with a disclaimer block. **These numbers are a regression signal, not ground truth.** Anyone reporting them without the disclaimer is misrepresenting what they are. See [`eval_data/README.md`](eval_data/README.md) for what synthetic eval is, isn't, and what real evaluation would look like.
+The report header explicitly labels the result as `SYNTHETIC eval — LLM-generated, NOT human-validated`, and ships with a disclaimer block. **These numbers are a regression signal, not ground truth.** Anyone reporting them without the disclaimer is misrepresenting what they are. See [`eval_data/README.md`](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/eval_data/README.md) for what synthetic eval is, isn't, and what real evaluation would look like.
 
 ---
 
 ### 7. CLI
 
 ```bash
+# Download the seed corpus (default folder for every command below: ./nepal_gov_data/)
+nepal-gov-agent download
+
 # Ask in English
 nepal-gov-agent ask "What is Nepal's National AI Policy?"
 
@@ -422,6 +440,22 @@ result = rag.ask("What is the Digital Nepal Framework?")
 
 ---
 
+## Configuration and environment variables
+
+Retrieval is configured in code through `GovRAGConfig` (see *Custom config* above). The core
+library needs **no** environment variables or API keys. Optional ones:
+
+| Variable | Used by | Purpose |
+|---|---|---|
+| `MISTRAL_API_KEY` | `ragnav.llm.mistral.MistralClient` (`[mistral]` extra) | Cited answer generation via Mistral |
+| `OPENAI_API_KEY` | `python -m nepal_gov_agent.eval.generate` (`[eval]` extra) | Synthetic eval generation |
+| `NGA_CORPUS_DIR` | `web/app.py`, `demo/app.py` | Use an existing PDF folder instead of downloading the seed corpus |
+| `NGA_CACHE_DIR` | `web/app.py`, `demo/app.py` | Embedding / retrieval cache folder (default `.nepal_gov_cache`) |
+
+Copy `.env.example` to `.env` for local development; never commit real keys.
+
+---
+
 ## Corpus
 
 ### Seed corpus (`download_corpus()`)
@@ -464,7 +498,7 @@ No extra configuration. Put PDFs in a single folder (not subfolders) and pass th
 ```
 Nepal GovAgent
 │
-├── RAG Layer          →  ragnav==0.3.0
+├── RAG Layer          →  ragnav>=0.5.1
 │   ├── PDF ingestion (PyMuPDF, page-level blocks)
 │   ├── BM25 index (rank-bm25)
 │   ├── Vector index (sentence-transformers, multilingual-e5-small by default)
@@ -474,11 +508,11 @@ Nepal GovAgent
 │   ├── Inline citation enforcement
 │   └── SQLite embedding + retrieval cache (offline)
 │
-├── Reliability Layer  →  ragfallback==2.0.2
+├── Reliability Layer  →  ragfallback>=2.0.2
 │   └── Metrics and adaptive utilities (PyPI dependency; GovRAG benchmark uses keyword / Recall@k on retrieved blocks)
 │
-└── Agent Layer        →  agentensemble==0.3.0 (Phase 2)
-    └── Multi-step workflows, SQLite session memory (planned)
+└── Agent Layer        →  agentensemble>=0.3.0 (Phase 2)
+    └── Multi-step workflows (pipeline conductor), SQLite session memory
 ```
 
 **Key design decisions:**
@@ -525,7 +559,10 @@ This is a meaningful signal for infrastructure quality. Answer quality evaluatio
 
 ## Release history
 
-**Current release:** `0.4.1` on PyPI — **18** tests passing; seed corpus via `download_corpus()` (opt-in, five PDFs).
+**Current release:** `0.5.0` on PyPI — **37** tests passing on Python 3.10–3.13 (offline synthetic test corpus); seed corpus via `download_corpus()` / `nepal-gov-agent download` (opt-in, five PDFs).
+
+- **0.5.0** — Python 3.10+, `nepal-gov-agent download` and `--version`, CLI defaults to `./nepal_gov_data/`, synthetic eval set found after `pip install`, cited-answer failures are logged instead of swallowed, GitHub Actions CI, offline test suite. See [CHANGELOG](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/CHANGELOG.md).
+- **0.4.1** — Seed corpus URLs pinned to the `v0.4.0` tag.
 
 - **0.4.0** — Polish + honesty pass. Synthetic eval harness with explicit "LLM-generated, not human-validated" labelling at every layer (report header, dataset README, CHANGELOG). Hosted demo at `nepalgov.datacortex.in` (since retired — see note below). Project reframed as a reference implementation; status set to maintenance.
 
@@ -567,7 +604,7 @@ This project establishes the retrieval foundation layer. The trust, oversight, a
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](https://github.com/irfanalidv/Nepal-Gov-Agent/blob/main/CONTRIBUTING.md) for guidelines.
 
 **Highest priority:** Nepal government document corpus. If you have publicly available PDFs — ministry circulars, SOPs, municipality guidelines — open an issue with links or sources.
 
@@ -577,7 +614,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 | Library | Role | Version |
 |---|---|---|
-| [RAGNav](https://github.com/irfanalidv/RAGNav) | Retrieval, citations, PDF ingestion | `>=0.3.0` |
+| [RAGNav](https://github.com/irfanalidv/RAGNav) | Retrieval, citations, PDF ingestion | `>=0.5.1` |
 | [ragfallback](https://github.com/irfanalidv/ragfallback) | Reliability, fallback, diagnostics | `>=2.0.2` |
 | [AgentEnsemble](https://github.com/irfanalidv/AgentEnsemble) | Orchestration, memory, planning | `>=0.3.0` |
 

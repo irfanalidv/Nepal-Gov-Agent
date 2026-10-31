@@ -1,0 +1,7 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include CITATION.cff
+include nepal_gov_agent/py.typed
+include eval_data/README.md
+include eval_data/synthetic_qa_v1.jsonl
