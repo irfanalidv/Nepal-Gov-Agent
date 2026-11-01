@@ -5,8 +5,8 @@ abstract: "Agentic RAG over Nepal government policy and legal documents: offline
 authors:
   - family-names: Ali
     given-names: Irfan
-version: "0.6.1"
-date-released: "2026-10-31"
+version: "0.6.2"
+date-released: 2026-11-01
 license: MIT
 repository-code: "https://github.com/irfanalidv/Nepal-Gov-Agent"
 url: "https://pypi.org/project/nepal-gov-agent/"

@@ -191,11 +191,15 @@ _EXAMPLES_SERVICE = [
 ]
 
 
+# Gradio 6 moved ``theme`` from ``Blocks()`` to ``launch()`` and replaced ``show_api`` with
+# ``footer_links``. Support both so the demo runs on gradio 5.x and 6.x.
+_GRADIO_6 = int(gr.__version__.split(".")[0]) >= 6
+_THEME = gr.themes.Soft(primary_hue="indigo", neutral_hue="slate")
+
+
 def build_ui() -> gr.Blocks:
-    with gr.Blocks(
-        title="Nepal GovAgent — Demo",
-        theme=gr.themes.Soft(primary_hue="indigo", neutral_hue="slate"),
-    ) as ui:
+    blocks_kwargs: dict[str, Any] = {} if _GRADIO_6 else {"theme": _THEME}
+    with gr.Blocks(title="Nepal GovAgent — Demo", **blocks_kwargs) as ui:
         gr.Markdown(_INTRO)
 
         with gr.Tabs():
@@ -282,12 +286,17 @@ def main() -> None:
     )
 
     ui = build_ui()
+    launch_kwargs: dict[str, Any] = (
+        {"theme": _THEME, "footer_links": ["gradio", "settings"]}
+        if _GRADIO_6
+        else {"show_api": False}
+    )
     # concurrency_limit=1: one GovRAG index per process (one SQLite owner thread).
     ui.queue(default_concurrency_limit=1).launch(
         server_name=args.host,
         server_port=args.port,
         share=args.share,
-        show_api=False,
+        **launch_kwargs,
     )
 
 
